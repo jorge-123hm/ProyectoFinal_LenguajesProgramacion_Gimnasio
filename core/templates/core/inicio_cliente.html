@@ -1,0 +1,40 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SMART FIT - Inicio</title>
+    <link rel="stylesheet" href="{% static 'core/css/dashboard.css' %}">
+</head>
+
+<body>
+
+    <aside class="sidebar">
+        {% include 'core/_perfil.html' %}
+        <nav class="menu">
+            <a href="{% url 'inicio_cliente' %}" class="activo">Inicio</a>
+        </nav>
+    </aside>
+
+    <main class="contenido">
+        {% include 'core/_mensajes.html' %}
+        <h1>Hola, {{ nombre_usuario }}</h1>
+        <p class="subtitulo">Bienvenido a SMART FIT.</p>
+
+        <h2 class="titulo-seccion">Mi membresía</h2>
+        {% if membresia %}
+        <article class="tarjeta">
+            <h3>{{ membresia.plan.nombre }}</h3>
+            <p>Vigente desde el {{ membresia.fecha_inicio|date:"d/m/Y" }}
+                hasta el {{ membresia.fecha_vencimiento|date:"d/m/Y" }}.</p>
+        </article>
+        {% else %}
+        <p class="subtitulo">Aún no tienes una membresía activa. Acércate a recepción para asignarla.</p>
+        {% endif %}
+    </main>
+
+</body>
+
+</html>

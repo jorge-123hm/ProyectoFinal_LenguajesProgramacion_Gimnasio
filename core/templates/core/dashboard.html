@@ -1,0 +1,68 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SMART FIT - Dashboard</title>
+    <link rel="stylesheet" href="{% static 'core/css/dashboard.css' %}">
+</head>
+<body>
+
+    <aside class="sidebar">
+        {% include 'core/_perfil.html' %}
+
+        <nav class="menu">
+            <a href="{% url 'dashboard' %}" class="activo">Dashboard</a>
+            <a href="{% url 'usuarios' %}">Usuarios</a>
+            <a href="#">Membresía</a>
+            <a href="#">Plan de Entrenamiento</a>
+            <a href="#">Pagos</a>
+        </nav>
+    </aside>
+
+    <main class="contenido">
+        {% include 'core/_mensajes.html' %}
+        <h1>Bienvenido a SMART FIT</h1>
+        <p class="subtitulo">
+            Aquí podrás gestionar la membresía, plan de entrenamiento y los pagos.
+        </p>
+
+        <h2 class="titulo-seccion">Resumen de Secciones</h2>
+
+        <section class="tarjetas">
+            <article class="tarjeta">
+                <div class="icono"><img src="{% static 'core/img/membresia.png' %}" alt="Membresía"></div>
+                <h3>Membresía</h3>
+                <p>Gestiona tu tipo de membresía y realiza un seguimiento de las membresías activas que tienes.</p>
+                <a href="{% url 'usuarios' %}">Ver más</a>
+            </article>
+
+            <article class="tarjeta">
+                <div class="icono"><img src="{% static 'core/img/plan-entrenamiento.png' %}" alt="Plan de Entrenamiento"></div>
+                <h3>Plan de Entrenamiento</h3>
+                <p>Administra los planes de entrenamiento, asigna rutinas personalizadas y realiza un seguimiento del progreso de cada socio.</p>
+                <a href="#">Ver más</a>
+            </article>
+
+            <article class="tarjeta">
+                <div class="icono"><img src="{% static 'core/img/pagos.png' %}" alt="Pagos"></div>
+                <h3>Pagos</h3>
+                <p>Gestiona tus pagos, controla las cuotas mensuales y realiza un seguimiento de los pagos pendientes o realizados.</p>
+                <a href="#">Ver más</a>
+            </article>
+
+            <article class="tarjeta">
+                <div class="icono"><img src="{% static 'core/img/usuarios.png' %}" alt="Usuarios"></div>
+                <h3>Usuarios</h3>
+                <p>Gestiona los usuarios del sistema, consulta sus roles y administra sus permisos.</p>
+                <a href="#">Ver más</a>
+            </article>
+        </section>
+
+        <h2 class="titulo-seccion">Información Detallada</h2>
+        <section class="info-detallada"></section>
+    </main>
+
+</body>
+</html>

@@ -1,0 +1,46 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SMART FIT - Registro</title>
+    <link rel="stylesheet" href="{% static 'core/css/login.css' %}">
+</head>
+
+<body>
+    <main class="login-card">
+        <h1 class="logo">SMART FIT</h1>
+        <h2>Crear Cuenta</h2>
+
+        {% if errores %}
+        <div class="mensaje error">
+            {% for e in errores %}<p>{{ e }}</p>{% endfor %}
+        </div>
+        {% endif %}
+
+        <form method="post">
+            {% csrf_token %}
+            <input type="text" name="nombre" placeholder="Nombres" maxlength="100" value="{{ datos.nombre|default:'' }}"
+                required>
+            <input type="text" name="apellidos" placeholder="Apellidos" maxlength="100"
+                value="{{ datos.apellidos|default:'' }}" required>
+            <input type="text" name="dni" placeholder="DNI (8 dígitos)" maxlength="8" inputmode="numeric"
+                value="{{ datos.dni|default:'' }}" required>
+            <input type="text" name="telefono" placeholder="Teléfono" maxlength="20"
+                value="{{ datos.telefono|default:'' }}" required>
+            <input type="email" name="email" placeholder="Correo electrónico" value="{{ datos.email|default:'' }}"
+                required>
+            <input type="password" name="password" placeholder="Contraseña" required>
+            <input type="password" name="password2" placeholder="Confirmar contraseña" required>
+            <button type="submit" class="btn-login">Registrarme</button>
+        </form>
+
+        <p class="registro">
+            ¿Ya tienes una cuenta? <a href="{% url 'login' %}">Inicia sesión</a>
+        </p>
+    </main>
+</body>
+
+</html>

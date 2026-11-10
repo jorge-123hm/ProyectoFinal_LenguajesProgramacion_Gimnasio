@@ -1,0 +1,62 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SMART FIT - Usuarios</title>
+    <link rel="stylesheet" href="{% static 'core/css/dashboard.css' %}">
+</head>
+<body>
+
+    <aside class="sidebar">
+        {% include 'core/_perfil.html' %}
+
+        <nav class="menu">
+            <a href="{% url 'dashboard' %}">Dashboard</a>
+            <a href="{% url 'usuarios' %}" class="activo">Usuarios</a>
+            <a href="#">Membresía</a>
+            <a href="#">Plan de Entrenamiento</a>
+            <a href="#">Pagos</a>
+        </nav>
+    </aside>
+
+    <main class="contenido">
+        {% include 'core/_mensajes.html' %}
+        <h1>Gestión de Usuarios</h1>
+        <h2 class="titulo-seccion">Usuarios Registrados</h2>
+
+        <div class="acciones">
+            <button type="button" class="btn-accion">Agregar Usuario</button>
+            <button type="button" class="btn-accion">Modificar Usuario</button>
+            <button type="button" class="btn-accion">Eliminar Usuario</button>
+        </div>
+
+        <div class="tabla-contenedor">
+            <table class="tabla">
+                <thead>
+                    <tr>
+                        <th>Nombre</th>
+                        <th>Apellidos</th>
+                        <th>Teléfono</th>
+                        <th>Correo Electrónico</th>
+                        <th>Tipo de Membresía</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for u in usuarios %}
+                    <tr>
+                        <td>{{ u.nombre }}</td>
+                        <td>{{ u.apellidos }}</td>
+                        <td>{{ u.telefono }}</td>
+                        <td>{{ u.correo }}</td>
+                        <td>{{ u.membresia }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </main>
+
+</body>
+</html>

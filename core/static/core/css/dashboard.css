@@ -1,0 +1,329 @@
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+    font-family: Arial, Helvetica, sans-serif;
+}
+
+body {
+    background: #fff;
+    color: #222;
+}
+
+/* ===== Barra lateral ===== */
+.sidebar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 230px;
+    height: 100vh;
+    background: #333;
+    color: #fff;
+    padding: 24px 14px;
+}
+
+.perfil {
+    text-align: center;
+    margin-bottom: 32px;
+}
+
+.logo-circulo {
+    width: 90px;
+    height: 90px;
+    margin: 0 auto 14px;
+    border-radius: 50%;
+    background: #ffc800;
+    color: #000;
+    font-size: 1.3rem;
+    font-weight: bold;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+}
+
+.logo-circulo img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    padding: 8px;
+}
+
+.perfil h2 {
+    font-size: 1.1rem;
+    margin-bottom: 8px;
+}
+
+.rol {
+    font-size: 0.75rem;
+    color: #ddd;
+}
+
+.menu a {
+    display: block;
+    padding: 14px 10px;
+    margin-bottom: 4px;
+    color: #fff;
+    text-decoration: none;
+    font-size: 0.9rem;
+    border-radius: 4px;
+}
+
+.menu a:hover,
+.menu a.activo {
+    background: #4a4a4a;
+}
+
+/* ===== Contenido principal ===== */
+.contenido {
+    margin-left: 230px;
+    padding: 30px 40px;
+}
+
+.contenido h1 {
+    font-size: 1.5rem;
+    margin-bottom: 14px;
+}
+
+.subtitulo {
+    font-size: 0.85rem;
+    margin-bottom: 6px;
+}
+
+.titulo-seccion {
+    font-size: 1.1rem;
+    margin: 20px 0 16px;
+}
+
+/* ===== Tarjetas ===== */
+.tarjetas {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+    gap: 20px;
+}
+
+.tarjeta {
+    background: #f2f2f2;
+    border-radius: 8px;
+    padding: 24px 18px;
+    text-align: center;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
+}
+
+.icono img {
+    width: 64px;
+    height: 64px;
+    max-width: 100%;
+    object-fit: contain;
+}
+
+.tarjeta h3 {
+    font-size: 1.05rem;
+    margin-bottom: 14px;
+}
+
+.tarjeta p {
+    font-size: 0.8rem;
+    color: #555;
+    line-height: 1.5;
+    margin-bottom: 16px;
+}
+
+.tarjeta a {
+    font-size: 0.8rem;
+    color: #1a73e8;
+    text-decoration: none;
+}
+
+.tarjeta a:hover {
+    text-decoration: underline;
+}
+
+/* ===== Información detallada ===== */
+.info-detallada {
+    background: #f2f2f2;
+    border-radius: 8px;
+    min-height: 160px;
+}
+
+
+
+/* ===== Botones de acción ===== */
+.acciones {
+    margin-bottom: 16px;
+}
+
+.btn-accion {
+    background: #222;
+    color: #fff;
+    border: none;
+    border-radius: 4px;
+    padding: 8px 12px;
+    margin-right: 6px;
+    font-size: 0.75rem;
+    cursor: pointer;
+}
+
+.btn-accion:hover {
+    background: #444;
+}
+
+/* ===== Tabla de usuarios ===== */
+.tabla-contenedor {
+    border: 1px solid #ddd;
+    border-radius: 6px;
+    overflow-x: auto;
+}
+
+.tabla {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.85rem;
+}
+
+.tabla th {
+    background: #f2f2f2;
+    text-align: left;
+    padding: 14px 12px;
+    border-bottom: 1px solid #ddd;
+}
+
+.tabla td {
+    padding: 14px 12px;
+    color: #555;
+    border-bottom: 1px solid #eee;
+}
+
+.tabla tbody tr:hover {
+    background: #fafafa;
+}
+
+/* ===== Formulario de plan de entrenamiento ===== */
+.tarjeta-formulario {
+    background: #f7f7f7;
+    border-radius: 8px;
+    padding: 28px;
+    max-width: 900px;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.12);
+}
+
+.tarjeta-formulario h1 {
+    font-size: 1.3rem;
+    margin-bottom: 10px;
+}
+
+.descripcion {
+    font-size: 0.8rem;
+    color: #666;
+    line-height: 1.5;
+    margin-bottom: 20px;
+}
+
+.tarjeta-formulario label {
+    display: block;
+    font-size: 0.85rem;
+    font-weight: bold;
+    margin: 16px 0 8px;
+}
+
+.tarjeta-formulario select,
+.tarjeta-formulario textarea {
+    width: 100%;
+    padding: 12px;
+    font-size: 0.85rem;
+    border: 1px solid #ddd;
+    border-radius: 6px;
+    background: #fff;
+}
+
+.tarjeta-formulario textarea {
+    resize: vertical;
+}
+
+.tarjeta-formulario select:focus,
+.tarjeta-formulario textarea:focus {
+    outline: 2px solid #ffc800;
+}
+
+.btn-asignar {
+    width: 100%;
+    margin-top: 24px;
+    padding: 14px;
+    background: #333;
+    color: #fff;
+    font-weight: bold;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+}
+
+.btn-asignar:hover {
+    background: #111;
+}
+
+.mensaje-ok {
+    background: #e7f7e7;
+    color: #1d6b1d;
+    padding: 10px 12px;
+    border-radius: 6px;
+    font-size: 0.85rem;
+}
+
+/* ===== Página de progreso ===== */
+.titulo-grande {
+    font-size: 1.3rem;
+    margin-top: 32px;
+}
+
+.form-progreso label {
+    display: block;
+    font-size: 0.85rem;
+    color: #444;
+    margin: 16px 0 8px;
+}
+
+.form-progreso select,
+.form-progreso input,
+.form-progreso textarea {
+    width: 100%;
+    padding: 12px;
+    font-size: 0.85rem;
+    border: 1px solid #ddd;
+    border-radius: 6px;
+    background: #fff;
+}
+
+.form-progreso select:focus,
+.form-progreso input:focus,
+.form-progreso textarea:focus {
+    outline: 2px solid #ffc800;
+}
+
+.form-progreso textarea {
+    resize: vertical;
+}
+
+.mensaje-error {
+    background: #f8d7da;
+    color: #842029;
+    padding: 10px 14px;
+    border-radius: 6px;
+    margin-bottom: 16px;
+}
+
+.btn-logout {
+    margin-top: 12px;
+    background: transparent;
+    color: #fff;
+    border: 1px solid #888;
+    padding: 6px 14px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 0.8rem;
+}
+
+.btn-logout:hover {
+    background: #ffc800;
+    color: #000;
+    border-color: #ffc800;
+}

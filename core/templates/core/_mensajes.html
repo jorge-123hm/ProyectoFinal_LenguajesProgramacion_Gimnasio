@@ -1,0 +1,3 @@
+{% for m in messages %}
+<p class="{% if m.tags == 'success' %}mensaje-ok{% else %}mensaje-error{% endif %}">{{ m }}</p>
+{% endfor %}

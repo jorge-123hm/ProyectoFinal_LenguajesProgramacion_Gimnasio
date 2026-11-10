@@ -1,0 +1,9 @@
+<div class="perfil">
+    <div class="logo-circulo">{{ iniciales }}</div>
+    <h2>{{ nombre_usuario }}</h2>
+    <span class="rol">{{ rol_nombre }}</span>
+    <form method="post" action="{% url 'logout' %}">
+        {% csrf_token %}
+        <button type="submit" class="btn-logout">Cerrar sesión</button>
+    </form>
+</div>

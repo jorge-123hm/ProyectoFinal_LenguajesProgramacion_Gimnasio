@@ -1,0 +1,68 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SMART FIT - Plan de Entrenamiento</title>
+    <link rel="stylesheet" href="{% static 'core/css/dashboard.css' %}">
+</head>
+<body>
+
+    <aside class="sidebar">
+        {% include 'core/_perfil.html' %}
+
+        <nav class="menu">
+            <a href="#">Dashboard</a>
+            <a href="#">Usuario</a>
+            <a href="{% url 'plan_entrenamiento' %}" class="activo">Plan de Entrenamiento</a>
+            <a href="{% url 'progreso' %}">Progreso</a>
+        </nav>
+    </aside>
+
+    <main class="contenido">
+        {% include 'core/_mensajes.html' %}
+        <section class="tarjeta-formulario">
+            <h1>Plan de Entrenamiento Personalizado</h1>
+            <p class="descripcion">
+                El sistema asigna un programa de entrenamiento personalizado a cada cliente,
+                tomando en cuenta sus objetivos y capacidades físicas. Esto permite un
+                seguimiento detallado del progreso de cada socio.
+            </p>
+
+            {% if mensaje %}
+            <p class="mensaje-ok">{{ mensaje }}</p>
+            {% endif %}
+
+            <form method="post">
+                {% csrf_token %}
+
+                <label for="cliente">Seleccionar Cliente:</label>
+                <select id="cliente" name="cliente">
+                    {% for c in clientes %}
+                    <option value="{{ c }}">{{ c }}</option>
+                    {% endfor %}
+                </select>
+
+                <label for="objetivos">Objetivos del Cliente:</label>
+                <textarea id="objetivos" name="objetivos" rows="5"
+                          placeholder="Ejemplo: Aumentar su masa muscular"></textarea>
+
+                <label for="capacidades">Capacidades Físicas:</label>
+                <textarea id="capacidades" name="capacidades" rows="5"
+                          placeholder="Ejemplo: Condición física regular"></textarea>
+
+                <label for="programa">Asignar Programa:</label>
+                <select id="programa" name="programa">
+                    {% for p in programas %}
+                    <option value="{{ p }}">{{ p }}</option>
+                    {% endfor %}
+                </select>
+
+                <button type="submit" class="btn-asignar">Asignar Plan</button>
+            </form>
+        </section>
+    </main>
+
+</body>
+</html>
