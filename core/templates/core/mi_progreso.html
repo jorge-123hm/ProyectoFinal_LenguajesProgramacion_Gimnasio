@@ -1,0 +1,49 @@
+{% extends 'core/base_panel.html' %}
+{% block titulo %}Mi Progreso{% endblock %}
+
+{% block contenido %}
+<h1>Mi Progreso</h1>
+<p class="descripcion">Evolución de tu peso levantado y repeticiones, registrada por tu entrenador.</p>
+
+<section class="kpis">
+    <article class="kpi"><span class="kpi-valor">{{ ultimo.peso }} kg</span><span class="kpi-titulo">Último peso levantado</span></article>
+    <article class="kpi"><span class="kpi-valor">{{ ultimo.repeticiones }}</span><span class="kpi-titulo">Repeticiones (último registro)</span></article>
+    <article class="kpi"><span class="kpi-valor">{{ registros|length }}</span><span class="kpi-titulo">Registros totales</span></article>
+</section>
+
+<section class="dos-columnas" style="margin-top:22px">
+    <div class="panel">
+        <h3>Evolución del peso levantado (kg)</h3>
+        <div class="barras">
+            {% for r in registros %}
+            <div class="barra-col">
+                <span class="barra-valor">{{ r.peso }}</span>
+                <div class="barra-area"><div class="barra" style="height: {{ r.altura }}%"></div></div>
+                <span class="barra-mes">{{ r.fecha|slice:"5:" }}</span>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+
+    <div class="panel">
+        <h3>Historial</h3>
+        <div class="tabla-contenedor">
+            <table class="tabla">
+                <thead>
+                    <tr><th>Fecha</th><th>Peso (kg)</th><th>Rep.</th><th>Comentario</th></tr>
+                </thead>
+                <tbody>
+                    {% for r in registros %}
+                    <tr>
+                        <td>{{ r.fecha }}</td>
+                        <td>{{ r.peso }}</td>
+                        <td>{{ r.repeticiones }}</td>
+                        <td>{{ r.comentario }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</section>
+{% endblock %}

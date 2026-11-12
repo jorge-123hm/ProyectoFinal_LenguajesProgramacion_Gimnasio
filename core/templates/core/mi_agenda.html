@@ -1,0 +1,76 @@
+{% extends 'core/base_panel.html' %}
+{% block titulo %}Mi Horario y Clases{% endblock %}
+
+{% block contenido %}
+<h1>Mi Horario y Clases</h1>
+<p class="descripcion">
+    Tu disponibilidad semanal y las clases grupales que tienes a cargo.
+    Si necesitas cambiar tu horario, comunícate con el administrador.
+</p>
+
+<h2 class="titulo-seccion">Mi horario semanal</h2>
+<div class="tabla-contenedor">
+    <table class="tabla tabla-horario">
+        <thead>
+            <tr>
+                {% for h in horario %}<th>{{ h.dia }}</th>{% endfor %}
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                {% for h in horario %}
+                <td>{% if h.rango %}<span class="rango">{{ h.rango }}</span>{% else %}<span class="libre">—</span>{% endif %}</td>
+                {% endfor %}
+            </tr>
+        </tbody>
+    </table>
+</div>
+
+<h2 class="titulo-seccion">Mis clases grupales</h2>
+<div class="tabla-contenedor">
+    <table class="tabla" id="tabla-mis-clases">
+        <thead>
+            <tr>
+                <th>Clase</th>
+                <th>Fecha</th>
+                <th>Hora</th>
+                <th>Duración</th>
+                <th>Inscritos</th>
+                <th>Estado</th>
+                <th>Acciones</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for c in clases %}
+            <tr data-nombre="{{ c.nombre }}" data-fecha="{{ c.fecha }}" data-inscritos="{{ c.inscritos_nombres }}">
+                <td>{{ c.nombre }}</td>
+                <td>{{ c.fecha }}</td>
+                <td>{{ c.hora }}</td>
+                <td>{{ c.duracion }} min</td>
+                <td class="cupos">
+                    {{ c.inscritos }} / {{ c.capacidad }}
+                    <div class="progreso-barra"><span style="width: {{ c.porcentaje }}%"></span></div>
+                </td>
+                <td><span class="badge badge-{{ c.estado|lower }}">{{ c.estado }}</span></td>
+                <td><button type="button" class="btn-accion" data-abrir="modal-inscritos">Ver inscritos</button></td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="7">No tienes clases asignadas.</td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+<dialog id="modal-inscritos" class="modal">
+    <div class="form-modal">
+        <h2>Inscritos</h2>
+        <p class="texto-modal">
+            <strong data-texto="nombre"></strong> · <span data-texto="fecha"></span>
+        </p>
+        <p class="texto-modal" style="margin-top:12px" data-texto="inscritos"></p>
+        <div class="modal-botones">
+            <button type="button" class="btn-secundario" data-cerrar>Cerrar</button>
+        </div>
+    </div>
+</dialog>
+{% endblock %}

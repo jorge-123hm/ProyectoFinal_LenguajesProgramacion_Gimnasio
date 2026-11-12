@@ -1,95 +1,116 @@
-{% load static %}
-<!DOCTYPE html>
-<html lang="es">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SMART FIT - Progreso</title>
-    <link rel="stylesheet" href="{% static 'core/css/dashboard.css' %}">
-</head>
-<body>
+{% extends 'core/base_panel.html' %}
+{% block titulo %}Progreso{% endblock %}
 
-    <aside class="sidebar">
-        {% include 'core/_perfil.html' %}
+{% block contenido %}
+<h1>Progreso de los Clientes</h1>
+<p class="descripcion">
+    En esta sección se registra y supervisa el progreso de cada cliente,
+    incluyendo indicadores clave como peso levantado, repeticiones y otros.
+</p>
 
-        <nav class="menu">
-            <a href="#">Dashboard</a>
-            <a href="#">Usuario</a>
-            <a href="{% url 'plan_entrenamiento' %}">Plan de Entrenamiento</a>
-            <a href="{% url 'progreso' %}" class="activo">Progreso</a>
-        </nav>
-    </aside>
+<div class="barra-herramientas">
+    <span></span>
+    <input type="search" class="buscador" placeholder="Buscar cliente..." data-filtrar="tabla-progreso">
+</div>
 
-    <main class="contenido">
-        {% include 'core/_mensajes.html' %}
-        <h1>Progreso de los Clientes</h1>
-        <p class="descripcion">
-            En esta sección se registra y supervisa el progreso de cada cliente,
-            incluyendo indicadores clave como peso levantado, repeticiones y otros.
-        </p>
+<div class="tabla-contenedor" style="margin-top:8px">
+    <table class="tabla" id="tabla-progreso">
+        <thead>
+            <tr>
+                <th>Nombre</th>
+                <th>Fecha</th>
+                <th>Peso Levantado (kg)</th>
+                <th>Repeticiones</th>
+                <th>Comentario</th>
+                <th>Acciones</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for r in registros %}
+            <tr data-id="{{ r.id }}" data-cliente="{{ r.cliente }}" data-fecha="{{ r.fecha }}"
+                data-peso="{{ r.peso }}" data-repeticiones="{{ r.repeticiones }}"
+                data-comentario="{{ r.comentario }}">
+                <td>{{ r.cliente }}</td>
+                <td>{{ r.fecha }}</td>
+                <td>{{ r.peso }}</td>
+                <td>{{ r.repeticiones }}</td>
+                <td>{{ r.comentario }}</td>
+                <td>
+                    <button type="button" class="btn-accion" data-abrir="modal-editar">Editar</button>
+                    <button type="button" class="btn-accion" data-abrir="modal-eliminar">Eliminar</button>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
 
-        <div class="tabla-contenedor">
-            <table class="tabla">
-                <thead>
-                    <tr>
-                        <th>Nombre</th>
-                        <th>Fecha</th>
-                        <th>Peso Levantado (kg)</th>
-                        <th>Repeticiones</th>
-                        <th>Comentario</th>
-                        <th>Acciones</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for r in registros %}
-                    <tr>
-                        <td>{{ r.nombre }}</td>
-                        <td>{{ r.fecha }}</td>
-                        <td>{{ r.peso }}</td>
-                        <td>{{ r.repeticiones }}</td>
-                        <td>{{ r.comentario }}</td>
-                        <td>
-                            <button type="button" class="btn-accion">Editar</button>
-                            <button type="button" class="btn-accion">Eliminar</button>
-                        </td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
+<h2 class="titulo-seccion titulo-grande">Registrar Nuevo Progreso</h2>
+<form method="post" class="form-progreso">
+    {% csrf_token %}
+    <input type="hidden" name="accion" value="registrar">
+
+    <label for="cliente">Seleccionar Cliente:</label>
+    <select id="cliente" name="cliente" required>
+        <option value="">-- Seleccionar --</option>
+        {% for c in clientes %}<option value="{{ c }}">{{ c }}</option>{% endfor %}
+    </select>
+
+    <label for="fecha">Fecha:</label>
+    <input type="date" id="fecha" name="fecha" data-hoy required>
+
+    <label for="peso">Peso Levantado (kg):</label>
+    <input type="number" id="peso" name="peso" min="0" step="0.5" required>
+
+    <label for="repeticiones">Repeticiones:</label>
+    <input type="number" id="repeticiones" name="repeticiones" min="0" required>
+
+    <label for="comentario">Comentario:</label>
+    <textarea id="comentario" name="comentario" rows="4"></textarea>
+
+    <button type="submit" class="btn-asignar">Registrar Progreso</button>
+</form>
+
+<!-- Editar -->
+<dialog id="modal-editar" class="modal">
+    <form method="post" class="form-modal">
+        {% csrf_token %}
+        <input type="hidden" name="accion" value="editar">
+        <input type="hidden" name="id">
+        <h2>Editar Progreso</h2>
+        <div class="grid-form">
+            <label class="completo">Cliente
+                <select name="cliente">
+                    {% for c in clientes %}<option value="{{ c }}">{{ c }}</option>{% endfor %}
+                </select>
+            </label>
+            <label>Fecha <input type="date" name="fecha" required></label>
+            <label>Peso levantado (kg) <input type="number" name="peso" min="0" step="0.5" required></label>
+            <label>Repeticiones <input type="number" name="repeticiones" min="0" required></label>
+            <label class="completo">Comentario <textarea name="comentario" rows="3"></textarea></label>
         </div>
+        <div class="modal-botones">
+            <button type="button" class="btn-secundario" data-cerrar>Cancelar</button>
+            <button type="submit" class="btn-primario">Guardar cambios</button>
+        </div>
+    </form>
+</dialog>
 
-        <h2 class="titulo-seccion titulo-grande">Registrar Nuevo Progreso</h2>
-
-        {% if mensaje %}
-        <p class="mensaje-ok">{{ mensaje }}</p>
-        {% endif %}
-
-        <form method="post" class="form-progreso">
-            {% csrf_token %}
-
-            <label for="cliente">Seleccionar Cliente:</label>
-            <select id="cliente" name="cliente" required>
-                <option value="">-- Seleccionar --</option>
-                {% for c in clientes %}
-                <option value="{{ c }}">{{ c }}</option>
-                {% endfor %}
-            </select>
-
-            <label for="fecha">Fecha:</label>
-            <input type="date" id="fecha" name="fecha" required>
-
-            <label for="peso">Peso Levantado (kg):</label>
-            <input type="number" id="peso" name="peso" min="0" step="0.5" required>
-
-            <label for="repeticiones">Repeticiones:</label>
-            <input type="number" id="repeticiones" name="repeticiones" min="0" required>
-
-            <label for="comentario">Comentario:</label>
-            <textarea id="comentario" name="comentario" rows="4"></textarea>
-
-            <button type="submit" class="btn-asignar">Registrar Progreso</button>
-        </form>
-    </main>
-
-</body>
-</html>
+<!-- Eliminar -->
+<dialog id="modal-eliminar" class="modal">
+    <form method="post" class="form-modal">
+        {% csrf_token %}
+        <input type="hidden" name="accion" value="eliminar">
+        <input type="hidden" name="id">
+        <h2>Eliminar Registro</h2>
+        <p class="texto-modal">
+            ¿Seguro que deseas eliminar el registro de <strong data-texto="cliente"></strong>
+            del <strong data-texto="fecha"></strong>?
+        </p>
+        <div class="modal-botones">
+            <button type="button" class="btn-secundario" data-cerrar>Cancelar</button>
+            <button type="submit" class="btn-peligro">Eliminar</button>
+        </div>
+    </form>
+</dialog>
+{% endblock %}

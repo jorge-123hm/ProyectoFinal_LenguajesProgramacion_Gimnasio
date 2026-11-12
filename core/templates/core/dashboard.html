@@ -1,68 +1,128 @@
+{% extends 'core/base_panel.html' %}
 {% load static %}
-<!DOCTYPE html>
-<html lang="es">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SMART FIT - Dashboard</title>
-    <link rel="stylesheet" href="{% static 'core/css/dashboard.css' %}">
-</head>
-<body>
+{% block titulo %}Dashboard{% endblock %}
 
-    <aside class="sidebar">
-        {% include 'core/_perfil.html' %}
+{% block contenido %}
+<h1>Bienvenido a SMART FIT</h1>
+<p class="subtitulo">Aquí podrás gestionar la membresía, plan de entrenamiento y los pagos.</p>
 
-        <nav class="menu">
-            <a href="{% url 'dashboard' %}" class="activo">Dashboard</a>
-            <a href="{% url 'usuarios' %}">Usuarios</a>
-            <a href="#">Membresía</a>
-            <a href="#">Plan de Entrenamiento</a>
-            <a href="#">Pagos</a>
-        </nav>
-    </aside>
+<section class="kpis">
+    {% for k in kpis %}
+    <article class="kpi">
+        <span class="kpi-valor">{{ k.valor }}</span>
+        <span class="kpi-titulo">{{ k.titulo }}</span>
+    </article>
+    {% endfor %}
+</section>
 
-    <main class="contenido">
-        {% include 'core/_mensajes.html' %}
-        <h1>Bienvenido a SMART FIT</h1>
-        <p class="subtitulo">
-            Aquí podrás gestionar la membresía, plan de entrenamiento y los pagos.
-        </p>
+<h2 class="titulo-seccion">Resumen de Secciones</h2>
 
-        <h2 class="titulo-seccion">Resumen de Secciones</h2>
+<section class="tarjetas">
+    {% if rol_usuario == 'ADMIN' or rol_usuario == 'RECEPCION' %}
+    <article class="tarjeta">
+        <div class="icono"><img src="{% static 'core/img/membresia.png' %}" alt="Membresía"></div>
+        <h3>Membresía</h3>
+        <p>Gestiona el tipo de membresía de los socios y realiza un seguimiento de las membresías activas.</p>
+        <a href="{% url 'membresias' %}">Ver más</a>
+    </article>
+    {% endif %}
 
-        <section class="tarjetas">
-            <article class="tarjeta">
-                <div class="icono"><img src="{% static 'core/img/membresia.png' %}" alt="Membresía"></div>
-                <h3>Membresía</h3>
-                <p>Gestiona tu tipo de membresía y realiza un seguimiento de las membresías activas que tienes.</p>
-                <a href="{% url 'usuarios' %}">Ver más</a>
-            </article>
+    {% if rol_usuario == 'ADMIN' %}
+    <article class="tarjeta">
+        <div class="icono"><img src="{% static 'core/img/plan-entrenamiento.png' %}" alt="Plan de Entrenamiento"></div>
+        <h3>Plan de Entrenamiento</h3>
+        <p>Administra los planes de entrenamiento, asigna rutinas personalizadas y realiza un seguimiento del progreso de cada socio.</p>
+        <a href="{% url 'plan_entrenamiento' %}">Ver más</a>
+    </article>
+    {% endif %}
 
-            <article class="tarjeta">
-                <div class="icono"><img src="{% static 'core/img/plan-entrenamiento.png' %}" alt="Plan de Entrenamiento"></div>
-                <h3>Plan de Entrenamiento</h3>
-                <p>Administra los planes de entrenamiento, asigna rutinas personalizadas y realiza un seguimiento del progreso de cada socio.</p>
-                <a href="#">Ver más</a>
-            </article>
+    {% if rol_usuario == 'ADMIN' or rol_usuario == 'FINANCIERO' %}
+    <article class="tarjeta">
+        <div class="icono"><img src="{% static 'core/img/pagos.png' %}" alt="Pagos"></div>
+        <h3>Pagos</h3>
+        <p>Gestiona los pagos, controla las cuotas mensuales y realiza un seguimiento de los pagos pendientes o realizados.</p>
+        <a href="{% url 'pagos' %}">Ver más</a>
+    </article>
+    {% endif %}
 
-            <article class="tarjeta">
-                <div class="icono"><img src="{% static 'core/img/pagos.png' %}" alt="Pagos"></div>
-                <h3>Pagos</h3>
-                <p>Gestiona tus pagos, controla las cuotas mensuales y realiza un seguimiento de los pagos pendientes o realizados.</p>
-                <a href="#">Ver más</a>
-            </article>
+    {% if rol_usuario == 'ADMIN' or rol_usuario == 'RECEPCION' %}
+    <article class="tarjeta">
+        <div class="icono"><img src="{% static 'core/img/usuarios.png' %}" alt="Usuarios"></div>
+        <h3>Usuarios</h3>
+        <p>Gestiona los usuarios del sistema, consulta sus roles y administra sus permisos.</p>
+        <a href="{% url 'usuarios' %}">Ver más</a>
+    </article>
+    {% endif %}
+</section>
 
-            <article class="tarjeta">
-                <div class="icono"><img src="{% static 'core/img/usuarios.png' %}" alt="Usuarios"></div>
-                <h3>Usuarios</h3>
-                <p>Gestiona los usuarios del sistema, consulta sus roles y administra sus permisos.</p>
-                <a href="#">Ver más</a>
-            </article>
-        </section>
+<h2 class="titulo-seccion">Información Detallada</h2>
 
-        <h2 class="titulo-seccion">Información Detallada</h2>
-        <section class="info-detallada"></section>
-    </main>
+<section class="dos-columnas">
+    {% if rol_usuario == 'FINANCIERO' %}
+    <div class="panel">
+        <h3>Últimas facturas</h3>
+        <div class="tabla-contenedor">
+            <table class="tabla">
+                <thead>
+                    <tr><th>N° Factura</th><th>Cliente</th><th>Monto</th><th>Estado</th></tr>
+                </thead>
+                <tbody>
+                    {% for f in facturas %}
+                    <tr>
+                        <td>{{ f.id }}</td>
+                        <td>{{ f.cliente }}</td>
+                        <td>S/. {{ f.monto }}</td>
+                        <td><span class="badge badge-{{ f.estado|lower }}">{{ f.estado }}</span></td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    {% else %}
+    <div class="panel">
+        <h3>Membresías por vencer (próximos 7 días)</h3>
+        <div class="tabla-contenedor">
+            <table class="tabla">
+                <thead>
+                    <tr><th>Cliente</th><th>Plan</th><th>Vence</th><th>Días</th></tr>
+                </thead>
+                <tbody>
+                    {% for m in por_vencer %}
+                    <tr>
+                        <td>{{ m.cliente }}</td>
+                        <td>{{ m.plan }}</td>
+                        <td>{{ m.vencimiento }}</td>
+                        <td>{{ m.dias }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    {% endif %}
 
-</body>
-</html>
+    {% if rol_usuario != 'RECEPCION' %}
+    <div class="panel">
+        <h3>Ingresos de los últimos 6 meses (S/.)</h3>
+        <div class="barras">
+            {% for m in ingresos %}
+            <div class="barra-col">
+                <span class="barra-valor">{{ m.monto }}</span>
+                <div class="barra-area"><div class="barra" style="height: {{ m.altura }}%"></div></div>
+                <span class="barra-mes">{{ m.mes }}</span>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+    {% else %}
+    <div class="panel">
+        <h3>Accesos rápidos</h3>
+        <p class="texto-suave" style="margin-bottom:14px">Tareas frecuentes de recepción.</p>
+        <a href="{% url 'usuarios' %}" class="btn-primario">Registrar cliente</a>
+        <a href="{% url 'membresias' %}" class="btn-secundario">Asignar membresía</a>
+        <a href="{% url 'notificaciones' %}" class="btn-secundario">Enviar notificación</a>
+    </div>
+    {% endif %}
+</section>
+{% endblock %}

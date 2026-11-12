@@ -1,3 +1,4 @@
+from .menus import menu_de
 from .roles import ROL_NOMBRES, rol_de
 
 
@@ -13,4 +14,5 @@ def usuario_actual(request):
         'iniciales': iniciales,
         'rol_usuario': rol,
         'rol_nombre': ROL_NOMBRES.get(rol, '').upper(),
+        'menu': menu_de(rol),
     }

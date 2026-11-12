@@ -1,0 +1,74 @@
+{% extends 'core/base_panel.html' %}
+{% block titulo %}Clases Grupales{% endblock %}
+
+{% block contenido %}
+<h1>Clases Grupales</h1>
+<p class="descripcion">
+    Reserva tu cupo en las próximas clases. Puedes cancelar tu reserva cuando lo necesites.
+</p>
+
+<section class="kpis">
+    <article class="kpi">
+        <span class="kpi-valor">{{ clases|length }}</span>
+        <span class="kpi-titulo">Clases disponibles</span>
+    </article>
+    <article class="kpi">
+        <span class="kpi-valor">{{ reservas }}</span>
+        <span class="kpi-titulo">Mis reservas activas</span>
+    </article>
+</section>
+
+<h2 class="titulo-seccion">Próximas clases</h2>
+<div class="tabla-contenedor">
+    <table class="tabla">
+        <thead>
+            <tr>
+                <th>Clase</th>
+                <th>Entrenador</th>
+                <th>Fecha</th>
+                <th>Hora</th>
+                <th>Duración</th>
+                <th>Cupos libres</th>
+                <th>Mi reserva</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for c in clases %}
+            <tr>
+                <td><strong>{{ c.nombre }}</strong><br><span class="texto-suave">{{ c.descripcion }}</span></td>
+                <td>{{ c.entrenador }}</td>
+                <td>{{ c.fecha }}</td>
+                <td>{{ c.hora }}</td>
+                <td>{{ c.duracion }} min</td>
+                <td>
+                    {% if c.llena %}<span class="badge badge-llena">Sin cupos</span>
+                    {% else %}{{ c.cupos }} de {{ c.capacidad }}{% endif %}
+                </td>
+                <td>
+                    {% if c.reservada %}
+                    <span class="badge badge-reservada">Reservada</span>
+                    <form method="post" data-confirmar="¿Cancelar tu reserva en {{ c.nombre }}?">
+                        {% csrf_token %}
+                        <input type="hidden" name="accion" value="cancelar_reserva">
+                        <input type="hidden" name="id" value="{{ c.id }}">
+                        <button type="submit" class="btn-accion peligro">Cancelar</button>
+                    </form>
+                    {% elif c.llena %}
+                    <button type="button" class="btn-accion" disabled>Completa</button>
+                    {% else %}
+                    <form method="post">
+                        {% csrf_token %}
+                        <input type="hidden" name="accion" value="reservar">
+                        <input type="hidden" name="id" value="{{ c.id }}">
+                        <button type="submit" class="btn-accion">Reservar</button>
+                    </form>
+                    {% endif %}
+                </td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="7">No hay clases programadas por ahora.</td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}

@@ -1,68 +1,110 @@
-{% load static %}
-<!DOCTYPE html>
-<html lang="es">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SMART FIT - Plan de Entrenamiento</title>
-    <link rel="stylesheet" href="{% static 'core/css/dashboard.css' %}">
-</head>
-<body>
+{% extends 'core/base_panel.html' %}
+{% block titulo %}Plan de Entrenamiento{% endblock %}
 
-    <aside class="sidebar">
-        {% include 'core/_perfil.html' %}
+{% block contenido %}
+<section class="tarjeta-formulario">
+    <h1>Plan de Entrenamiento Personalizado</h1>
+    <p class="descripcion">
+        El sistema asigna un programa de entrenamiento personalizado a cada cliente,
+        tomando en cuenta sus objetivos y capacidades físicas. Esto permite un
+        seguimiento detallado del progreso de cada socio.
+    </p>
 
-        <nav class="menu">
-            <a href="#">Dashboard</a>
-            <a href="#">Usuario</a>
-            <a href="{% url 'plan_entrenamiento' %}" class="activo">Plan de Entrenamiento</a>
-            <a href="{% url 'progreso' %}">Progreso</a>
-        </nav>
-    </aside>
+    <form method="post">
+        {% csrf_token %}
+        <input type="hidden" name="accion" value="asignar">
 
-    <main class="contenido">
-        {% include 'core/_mensajes.html' %}
-        <section class="tarjeta-formulario">
-            <h1>Plan de Entrenamiento Personalizado</h1>
-            <p class="descripcion">
-                El sistema asigna un programa de entrenamiento personalizado a cada cliente,
-                tomando en cuenta sus objetivos y capacidades físicas. Esto permite un
-                seguimiento detallado del progreso de cada socio.
-            </p>
+        <label for="cliente">Seleccionar Cliente:</label>
+        <select id="cliente" name="cliente" required>
+            <option value="">-- Seleccionar --</option>
+            {% for c in clientes %}<option value="{{ c }}">{{ c }}</option>{% endfor %}
+        </select>
 
-            {% if mensaje %}
-            <p class="mensaje-ok">{{ mensaje }}</p>
-            {% endif %}
+        <label for="objetivos">Objetivos del Cliente:</label>
+        <textarea id="objetivos" name="objetivos" rows="4" required
+            placeholder="Ejemplo: Aumentar su masa muscular"></textarea>
 
-            <form method="post">
-                {% csrf_token %}
+        <label for="capacidades">Capacidades Físicas:</label>
+        <textarea id="capacidades" name="capacidades" rows="4" required
+            placeholder="Ejemplo: Condición física regular"></textarea>
 
-                <label for="cliente">Seleccionar Cliente:</label>
-                <select id="cliente" name="cliente">
-                    {% for c in clientes %}
-                    <option value="{{ c }}">{{ c }}</option>
-                    {% endfor %}
+        <label for="programa">Asignar Programa:</label>
+        <select id="programa" name="programa" required>
+            {% for p in programas %}<option value="{{ p }}">{{ p }}</option>{% endfor %}
+        </select>
+
+        <label for="frecuencia">Frecuencia (días por semana):</label>
+        <select id="frecuencia" name="frecuencia">
+            {% for n in "1234567" %}
+            <option value="{{ n }}" {% if n == "3" %} selected{% endif %}>
+                {{ n }}
+            </option>
+            {%endfor %}
+        </select>
+
+        <button type="submit" class="btn-asignar">Asignar Plan</button>
+    </form>
+</section>
+
+<div class="barra-herramientas" style="margin-top:32px">
+    <h2 class="titulo-seccion" style="margin:0">Planes asignados</h2>
+    <input type="search" class="buscador" placeholder="Buscar cliente o programa..." data-filtrar="tabla-planes">
+</div>
+
+<div class="tabla-contenedor" style="margin-top:12px">
+    <table class="tabla" id="tabla-planes">
+        <thead>
+            <tr>
+                <th>Cliente</th>
+                <th>Programa</th>
+                <th>Objetivo</th>
+                <th>Días/sem.</th>
+                <th>Entrenador</th>
+                <th>Desde</th>
+                <th>Acciones</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for p in planes %}
+            <tr data-id="{{ p.id }}" data-cliente="{{ p.cliente }}" data-programa="{{ p.programa }}"
+                data-objetivos="{{ p.objetivos }}" data-capacidades="{{ p.capacidades }}"
+                data-frecuencia="{{ p.frecuencia }}">
+                <td>{{ p.cliente }}</td>
+                <td>{{ p.programa }}</td>
+                <td>{{ p.objetivos }}</td>
+                <td>{{ p.frecuencia }}</td>
+                <td>{{ p.entrenador }}</td>
+                <td>{{ p.fecha }}</td>
+                <td><button type="button" class="btn-accion" data-abrir="modal-plan">Modificar</button></td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+<dialog id="modal-plan" class="modal">
+    <form method="post" class="form-modal">
+        {% csrf_token %}
+        <input type="hidden" name="accion" value="modificar">
+        <input type="hidden" name="id">
+        <h2>Modificar Plan de Entrenamiento</h2>
+        <div class="grid-form">
+            <label class="completo">Cliente <input type="text" name="cliente" readonly></label>
+            <label class="completo">Objetivos del cliente <textarea name="objetivos" rows="3"
+                    required></textarea></label>
+            <label class="completo">Capacidades físicas <textarea name="capacidades" rows="3"
+                    required></textarea></label>
+            <label>Programa
+                <select name="programa">
+                    {% for p in programas %}<option value="{{ p }}">{{ p }}</option>{% endfor %}
                 </select>
-
-                <label for="objetivos">Objetivos del Cliente:</label>
-                <textarea id="objetivos" name="objetivos" rows="5"
-                          placeholder="Ejemplo: Aumentar su masa muscular"></textarea>
-
-                <label for="capacidades">Capacidades Físicas:</label>
-                <textarea id="capacidades" name="capacidades" rows="5"
-                          placeholder="Ejemplo: Condición física regular"></textarea>
-
-                <label for="programa">Asignar Programa:</label>
-                <select id="programa" name="programa">
-                    {% for p in programas %}
-                    <option value="{{ p }}">{{ p }}</option>
-                    {% endfor %}
-                </select>
-
-                <button type="submit" class="btn-asignar">Asignar Plan</button>
-            </form>
-        </section>
-    </main>
-
-</body>
-</html>
+            </label>
+            <label>Días por semana <input type="number" name="frecuencia" min="1" max="7" required></label>
+        </div>
+        <div class="modal-botones">
+            <button type="button" class="btn-secundario" data-cerrar>Cancelar</button>
+            <button type="submit" class="btn-primario">Guardar cambios</button>
+        </div>
+    </form>
+</dialog>
+{% endblock %}

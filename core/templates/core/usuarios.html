@@ -1,62 +1,122 @@
-{% load static %}
-<!DOCTYPE html>
-<html lang="es">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SMART FIT - Usuarios</title>
-    <link rel="stylesheet" href="{% static 'core/css/dashboard.css' %}">
-</head>
-<body>
+{% extends 'core/base_panel.html' %}
+{% block titulo %}Usuarios{% endblock %}
 
-    <aside class="sidebar">
-        {% include 'core/_perfil.html' %}
+{% block contenido %}
+<h1>Gestión de Usuarios</h1>
+<h2 class="titulo-seccion">Usuarios Registrados</h2>
 
-        <nav class="menu">
-            <a href="{% url 'dashboard' %}">Dashboard</a>
-            <a href="{% url 'usuarios' %}" class="activo">Usuarios</a>
-            <a href="#">Membresía</a>
-            <a href="#">Plan de Entrenamiento</a>
-            <a href="#">Pagos</a>
-        </nav>
-    </aside>
+<div class="barra-herramientas">
+    <div class="acciones">
+        <button type="button" class="btn-accion" data-abrir="modal-agregar">Agregar Usuario</button>
+        <button type="button" class="btn-accion" data-fila-accion="modal-modificar" data-tabla="tabla-usuarios">Modificar Usuario</button>
+        <button type="button" class="btn-accion" data-fila-accion="modal-eliminar" data-tabla="tabla-usuarios">Eliminar Usuario</button>
+    </div>
+    <input type="search" class="buscador" placeholder="Buscar usuario..." data-filtrar="tabla-usuarios">
+</div>
+<p class="ayuda">Haz clic en una fila para seleccionarla y luego usa «Modificar» o «Eliminar».</p>
 
-    <main class="contenido">
-        {% include 'core/_mensajes.html' %}
-        <h1>Gestión de Usuarios</h1>
-        <h2 class="titulo-seccion">Usuarios Registrados</h2>
+<div class="tabla-contenedor">
+    <table class="tabla tabla-seleccionable" id="tabla-usuarios">
+        <thead>
+            <tr>
+                <th>Nombre</th>
+                <th>Apellidos</th>
+                <th>DNI</th>
+                <th>Teléfono</th>
+                <th>Correo Electrónico</th>
+                <th>Tipo de Membresía</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for u in usuarios %}
+            <tr data-id="{{ u.id }}" data-nombre="{{ u.nombre }}" data-apellidos="{{ u.apellidos }}"
+                data-dni="{{ u.dni }}" data-telefono="{{ u.telefono }}" data-email="{{ u.email }}"
+                data-membresia="{{ u.membresia }}">
+                <td>{{ u.nombre }}</td>
+                <td>{{ u.apellidos }}</td>
+                <td>{{ u.dni }}</td>
+                <td>{{ u.telefono }}</td>
+                <td>{{ u.email }}</td>
+                <td>{{ u.membresia }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
 
-        <div class="acciones">
-            <button type="button" class="btn-accion">Agregar Usuario</button>
-            <button type="button" class="btn-accion">Modificar Usuario</button>
-            <button type="button" class="btn-accion">Eliminar Usuario</button>
+<!-- Agregar -->
+<dialog id="modal-agregar" class="modal">
+    <form method="post" class="form-modal">
+        {% csrf_token %}
+        <input type="hidden" name="accion" value="agregar">
+        <h2>Agregar Usuario</h2>
+        <div class="grid-form">
+            <label>Nombres <input type="text" name="nombre" maxlength="100" required></label>
+            <label>Apellidos <input type="text" name="apellidos" maxlength="100" required></label>
+            <label>DNI <input type="text" name="dni" maxlength="8" inputmode="numeric" required></label>
+            <label>Teléfono <input type="text" name="telefono" maxlength="20" required></label>
+            <label class="completo">Correo electrónico <input type="email" name="email" required></label>
+            <label class="completo">Tipo de membresía
+                <select name="membresia">
+                    <option>Sin membresía</option>
+                    <option>Básico</option>
+                    <option>Standard</option>
+                    <option>Premium</option>
+                </select>
+            </label>
         </div>
-
-        <div class="tabla-contenedor">
-            <table class="tabla">
-                <thead>
-                    <tr>
-                        <th>Nombre</th>
-                        <th>Apellidos</th>
-                        <th>Teléfono</th>
-                        <th>Correo Electrónico</th>
-                        <th>Tipo de Membresía</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for u in usuarios %}
-                    <tr>
-                        <td>{{ u.nombre }}</td>
-                        <td>{{ u.apellidos }}</td>
-                        <td>{{ u.telefono }}</td>
-                        <td>{{ u.correo }}</td>
-                        <td>{{ u.membresia }}</td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
+        <div class="modal-botones">
+            <button type="button" class="btn-secundario" data-cerrar>Cancelar</button>
+            <button type="submit" class="btn-primario">Guardar</button>
         </div>
-    </main>
+    </form>
+</dialog>
 
-</body>
-</html>
+<!-- Modificar -->
+<dialog id="modal-modificar" class="modal">
+    <form method="post" class="form-modal">
+        {% csrf_token %}
+        <input type="hidden" name="accion" value="modificar">
+        <input type="hidden" name="id">
+        <h2>Modificar Usuario</h2>
+        <div class="grid-form">
+            <label>Nombres <input type="text" name="nombre" maxlength="100" required></label>
+            <label>Apellidos <input type="text" name="apellidos" maxlength="100" required></label>
+            <label>DNI <input type="text" name="dni" maxlength="8" inputmode="numeric" required></label>
+            <label>Teléfono <input type="text" name="telefono" maxlength="20" required></label>
+            <label class="completo">Correo electrónico <input type="email" name="email" required></label>
+            <label class="completo">Tipo de membresía
+                <select name="membresia">
+                    <option>Sin membresía</option>
+                    <option>Básico</option>
+                    <option>Standard</option>
+                    <option>Premium</option>
+                </select>
+            </label>
+        </div>
+        <div class="modal-botones">
+            <button type="button" class="btn-secundario" data-cerrar>Cancelar</button>
+            <button type="submit" class="btn-primario">Guardar cambios</button>
+        </div>
+    </form>
+</dialog>
+
+<!-- Eliminar -->
+<dialog id="modal-eliminar" class="modal">
+    <form method="post" class="form-modal">
+        {% csrf_token %}
+        <input type="hidden" name="accion" value="eliminar">
+        <input type="hidden" name="id">
+        <h2>Eliminar Usuario</h2>
+        <p class="texto-modal">
+            ¿Seguro que deseas eliminar a
+            <strong><span data-texto="nombre"></span> <span data-texto="apellidos"></span></strong>?
+            Esta acción no se puede deshacer.
+        </p>
+        <div class="modal-botones">
+            <button type="button" class="btn-secundario" data-cerrar>Cancelar</button>
+            <button type="submit" class="btn-peligro">Eliminar</button>
+        </div>
+    </form>
+</dialog>
+{% endblock %}

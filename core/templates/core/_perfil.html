@@ -1,5 +1,8 @@
+{% load static %}
 <div class="perfil">
-    <div class="logo-circulo">{{ iniciales }}</div>
+    <div class="logo-circulo">
+        <img src="{% static 'core/img/logo.png' %}" alt="SMART FIT" width="74" height="74">
+    </div>
     <h2>{{ nombre_usuario }}</h2>
     <span class="rol">{{ rol_nombre }}</span>
     <form method="post" action="{% url 'logout' %}">

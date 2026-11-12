@@ -1,40 +1,57 @@
-{% load static %}
-<!DOCTYPE html>
-<html lang="es">
+{% extends 'core/base_panel.html' %}
+{% block titulo %}Inicio{% endblock %}
 
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SMART FIT - Inicio</title>
-    <link rel="stylesheet" href="{% static 'core/css/dashboard.css' %}">
-</head>
+{% block contenido %}
+<h1>Hola, {{ nombre_usuario }}</h1>
+<p class="subtitulo">Bienvenido a SMART FIT. Aquí puedes ver el estado de tu membresía, tu plan y tu progreso.</p>
 
-<body>
+<section class="kpis">
+    <article class="kpi">
+        <span class="kpi-valor">{{ membresia.plan }}</span>
+        <span class="kpi-titulo">Mi membresía ({{ membresia.estado }})</span>
+    </article>
+    <article class="kpi">
+        <span class="kpi-valor">{{ membresia.dias }} días</span>
+        <span class="kpi-titulo">Para el vencimiento</span>
+    </article>
+    <article class="kpi">
+        <span class="kpi-valor">{{ plan.frecuencia }} / sem.</span>
+        <span class="kpi-titulo">Entrenamientos programados</span>
+    </article>
+    <article class="kpi">
+        <span class="kpi-valor">{{ ultimo_progreso.peso }} kg</span>
+        <span class="kpi-titulo">Último peso levantado</span>
+    </article>
+</section>
 
-    <aside class="sidebar">
-        {% include 'core/_perfil.html' %}
-        <nav class="menu">
-            <a href="{% url 'inicio_cliente' %}" class="activo">Inicio</a>
-        </nav>
-    </aside>
+<h2 class="titulo-seccion">Mi resumen</h2>
+<section class="tarjetas">
+    <article class="tarjeta">
+        <h3>Mi Membresía</h3>
+        <p>Plan {{ membresia.plan }}, vigente hasta el {{ membresia.vencimiento }}.</p>
+        <a href="{% url 'mi_membresia' %}">Ver más</a>
+    </article>
+    <article class="tarjeta">
+        <h3>Mi Plan</h3>
+        <p>{{ plan.programa }}. Objetivo: {{ plan.objetivo }}.</p>
+        <a href="{% url 'mi_plan' %}">Ver más</a>
+    </article>
+    <article class="tarjeta">
+        <h3>Mi Progreso</h3>
+        <p>Último registro el {{ ultimo_progreso.fecha }}: {{ ultimo_progreso.peso }} kg x {{ ultimo_progreso.repeticiones }} repeticiones.</p>
+        <a href="{% url 'mi_progreso' %}">Ver más</a>
+    </article>
+    <article class="tarjeta">
+        <h3>Mis Pagos</h3>
+        <p>Último pago: S/. {{ ultimo_pago.monto }} el {{ ultimo_pago.fecha }}.</p>
+        <a href="{% url 'mis_pagos' %}">Ver más</a>
+    </article>
+</section>
 
-    <main class="contenido">
-        {% include 'core/_mensajes.html' %}
-        <h1>Hola, {{ nombre_usuario }}</h1>
-        <p class="subtitulo">Bienvenido a SMART FIT.</p>
-
-        <h2 class="titulo-seccion">Mi membresía</h2>
-        {% if membresia %}
-        <article class="tarjeta">
-            <h3>{{ membresia.plan.nombre }}</h3>
-            <p>Vigente desde el {{ membresia.fecha_inicio|date:"d/m/Y" }}
-                hasta el {{ membresia.fecha_vencimiento|date:"d/m/Y" }}.</p>
-        </article>
-        {% else %}
-        <p class="subtitulo">Aún no tienes una membresía activa. Acércate a recepción para asignarla.</p>
-        {% endif %}
-    </main>
-
-</body>
-
-</html>
+<h2 class="titulo-seccion">Notificaciones nuevas</h2>
+{% for n in nuevas %}
+<div class="notif nueva">{{ n.mensaje }}<small>{{ n.fecha }}</small></div>
+{% empty %}
+<p class="texto-suave">No tienes notificaciones nuevas.</p>
+{% endfor %}
+{% endblock %}

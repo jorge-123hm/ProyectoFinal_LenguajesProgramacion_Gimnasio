@@ -1,0 +1,155 @@
+{% extends 'core/base_panel.html' %}
+{% block titulo %}Clases Grupales{% endblock %}
+
+{% block contenido %}
+<h1>Programación de Clases Grupales</h1>
+<p class="descripcion">
+    Programa las clases, verifica la capacidad y el horario del entrenador, y consulta el calendario semanal.
+</p>
+
+<section class="kpis">
+    {% for k in kpis %}
+    <article class="kpi">
+        <span class="kpi-valor">{{ k.valor }}</span>
+        <span class="kpi-titulo">{{ k.titulo }}</span>
+    </article>
+    {% endfor %}
+</section>
+
+<section class="panel" style="margin-top:22px">
+    <h3>Programar nueva clase</h3>
+    <form method="post" class="form-panel">
+        {% csrf_token %}
+        <input type="hidden" name="accion" value="programar">
+        <div class="grid-form">
+            <label>Nombre de la clase
+                <input type="text" name="nombre" maxlength="120" placeholder="Ejemplo: Spinning" required>
+            </label>
+            <label>Entrenador
+                <select name="entrenador" required>
+                    {% for e in entrenadores %}<option value="{{ e }}">{{ e }}</option>{% endfor %}
+                </select>
+            </label>
+            <label>Fecha <input type="date" name="fecha" data-hoy required></label>
+            <label>Hora <input type="time" name="hora" required></label>
+            <label>Duración (minutos) <input type="number" name="duracion" min="15" step="5" value="60" required></label>
+            <label>Capacidad máxima <input type="number" name="capacidad" min="1" value="15" required></label>
+            <label class="completo">Descripción
+                <textarea name="descripcion" rows="2" placeholder="Breve descripción de la clase"></textarea>
+            </label>
+        </div>
+        <p class="ayuda" style="margin-top:12px">
+            Antes de guardar, el sistema verifica que el horario y la capacidad estén disponibles.
+        </p>
+        <button type="submit" class="btn-primario">Programar clase</button>
+    </form>
+</section>
+
+<h2 class="titulo-seccion">Calendario semanal</h2>
+<div class="calendario">
+    {% for d in calendario %}
+    <div class="cal-dia">
+        <h4>{{ d.dia }}</h4>
+        {% for c in d.clases %}
+        <div class="cal-clase cal-{{ c.estado|lower }}">
+            <strong>{{ c.hora }}</strong> {{ c.nombre }}
+            <small>{{ c.entrenador }}</small>
+        </div>
+        {% empty %}
+        <p class="cal-vacio">Sin clases</p>
+        {% endfor %}
+    </div>
+    {% endfor %}
+</div>
+
+<div class="barra-herramientas">
+    <h2 class="titulo-seccion" style="margin:0">Clases registradas</h2>
+    <input type="search" class="buscador" placeholder="Buscar clase o entrenador..." data-filtrar="tabla-clases">
+</div>
+
+<div class="tabla-contenedor" style="margin-top:12px">
+    <table class="tabla" id="tabla-clases">
+        <thead>
+            <tr>
+                <th>Clase</th>
+                <th>Entrenador</th>
+                <th>Fecha</th>
+                <th>Hora</th>
+                <th>Duración</th>
+                <th>Cupos</th>
+                <th>Estado</th>
+                <th>Acciones</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for c in clases %}
+            <tr data-id="{{ c.id }}" data-nombre="{{ c.nombre }}" data-entrenador="{{ c.entrenador }}"
+                data-fecha="{{ c.fecha }}" data-hora="{{ c.hora }}" data-duracion="{{ c.duracion }}"
+                data-capacidad="{{ c.capacidad }}" data-descripcion="{{ c.descripcion }}">
+                <td>{{ c.nombre }}</td>
+                <td>{{ c.entrenador }}</td>
+                <td>{{ c.fecha }}</td>
+                <td>{{ c.hora }}</td>
+                <td>{{ c.duracion }} min</td>
+                <td class="cupos">
+                    {{ c.inscritos }} / {{ c.capacidad }}
+                    <div class="progreso-barra"><span style="width: {{ c.porcentaje }}%"></span></div>
+                </td>
+                <td><span class="badge badge-{{ c.estado|lower }}">{{ c.estado }}</span></td>
+                <td>
+                    {% if c.estado == 'Programada' %}
+                    <button type="button" class="btn-accion" data-abrir="modal-modificar-clase">Modificar</button>
+                    <button type="button" class="btn-accion peligro" data-abrir="modal-cancelar-clase">Cancelar</button>
+                    {% endif %}
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+<!-- Modificar clase -->
+<dialog id="modal-modificar-clase" class="modal">
+    <form method="post" class="form-modal">
+        {% csrf_token %}
+        <input type="hidden" name="accion" value="modificar">
+        <input type="hidden" name="id">
+        <h2>Modificar Clase</h2>
+        <div class="grid-form">
+            <label>Nombre de la clase <input type="text" name="nombre" maxlength="120" required></label>
+            <label>Entrenador
+                <select name="entrenador">
+                    {% for e in entrenadores %}<option value="{{ e }}">{{ e }}</option>{% endfor %}
+                </select>
+            </label>
+            <label>Fecha <input type="date" name="fecha" required></label>
+            <label>Hora <input type="time" name="hora" required></label>
+            <label>Duración (minutos) <input type="number" name="duracion" min="15" step="5" required></label>
+            <label>Capacidad máxima <input type="number" name="capacidad" min="1" required></label>
+            <label class="completo">Descripción <textarea name="descripcion" rows="2"></textarea></label>
+        </div>
+        <div class="modal-botones">
+            <button type="button" class="btn-secundario" data-cerrar>Cancelar</button>
+            <button type="submit" class="btn-primario">Guardar cambios</button>
+        </div>
+    </form>
+</dialog>
+
+<!-- Cancelar clase -->
+<dialog id="modal-cancelar-clase" class="modal">
+    <form method="post" class="form-modal">
+        {% csrf_token %}
+        <input type="hidden" name="accion" value="cancelar">
+        <input type="hidden" name="id">
+        <h2>Cancelar Clase</h2>
+        <p class="texto-modal">
+            ¿Seguro que deseas cancelar la clase <strong data-texto="nombre"></strong>
+            del <strong data-texto="fecha"></strong>? Se avisará a los clientes inscritos.
+        </p>
+        <div class="modal-botones">
+            <button type="button" class="btn-secundario" data-cerrar>Volver</button>
+            <button type="submit" class="btn-peligro">Cancelar clase</button>
+        </div>
+    </form>
+</dialog>
+{% endblock %}

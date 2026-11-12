@@ -1,0 +1,127 @@
+{% extends 'core/base_panel.html' %}
+{% block titulo %}Horarios de Entrenadores{% endblock %}
+
+{% block contenido %}
+<h1>Gestión de Horarios de Entrenadores</h1>
+<p class="descripcion">
+    Consulta la disponibilidad semanal de cada entrenador y agrega o modifica sus horarios.
+    Al guardar un cambio, el sistema notifica al entrenador.
+</p>
+
+<h2 class="titulo-seccion">Horario semanal</h2>
+<div class="tabla-contenedor">
+    <table class="tabla tabla-horario">
+        <thead>
+            <tr>
+                <th>Entrenador</th>
+                {% for d in dias %}<th>{{ d }}</th>{% endfor %}
+            </tr>
+        </thead>
+        <tbody>
+            {% for fila in grid %}
+            <tr>
+                <td>{{ fila.entrenador }}</td>
+                {% for celda in fila.celdas %}
+                <td>{% if celda %}<span class="rango">{{ celda }}</span>{% else %}<span class="libre">—</span>{% endif %}</td>
+                {% endfor %}
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+<section class="panel" style="margin-top:22px">
+    <h3>Agregar horario</h3>
+    <form method="post" class="form-panel form-linea">
+        {% csrf_token %}
+        <input type="hidden" name="accion" value="agregar">
+        <label>Entrenador
+            <select name="entrenador" required>
+                {% for e in entrenadores %}<option value="{{ e }}">{{ e }}</option>{% endfor %}
+            </select>
+        </label>
+        <label>Día
+            <select name="dia" required>
+                {% for d in dias %}<option value="{{ d }}">{{ d }}</option>{% endfor %}
+            </select>
+        </label>
+        <label>Hora de inicio <input type="time" name="inicio" required></label>
+        <label>Hora de fin <input type="time" name="fin" required></label>
+        <button type="submit" class="btn-primario">Guardar horario</button>
+    </form>
+</section>
+
+<div class="barra-herramientas">
+    <h2 class="titulo-seccion" style="margin:0">Horarios registrados</h2>
+    <input type="search" class="buscador" placeholder="Buscar entrenador o día..." data-filtrar="tabla-horarios">
+</div>
+
+<div class="tabla-contenedor" style="margin-top:12px">
+    <table class="tabla" id="tabla-horarios">
+        <thead>
+            <tr><th>Entrenador</th><th>Día</th><th>Inicio</th><th>Fin</th><th>Acciones</th></tr>
+        </thead>
+        <tbody>
+            {% for h in horarios %}
+            <tr data-id="{{ h.id }}" data-entrenador="{{ h.entrenador }}" data-dia="{{ h.dia }}"
+                data-inicio="{{ h.inicio }}" data-fin="{{ h.fin }}">
+                <td>{{ h.entrenador }}</td>
+                <td>{{ h.dia }}</td>
+                <td>{{ h.inicio }}</td>
+                <td>{{ h.fin }}</td>
+                <td>
+                    <button type="button" class="btn-accion" data-abrir="modal-modificar-horario">Modificar</button>
+                    <button type="button" class="btn-accion peligro" data-abrir="modal-eliminar-horario">Eliminar</button>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+<!-- Modificar -->
+<dialog id="modal-modificar-horario" class="modal">
+    <form method="post" class="form-modal">
+        {% csrf_token %}
+        <input type="hidden" name="accion" value="modificar">
+        <input type="hidden" name="id">
+        <h2>Modificar Horario</h2>
+        <div class="grid-form">
+            <label class="completo">Entrenador
+                <select name="entrenador">
+                    {% for e in entrenadores %}<option value="{{ e }}">{{ e }}</option>{% endfor %}
+                </select>
+            </label>
+            <label class="completo">Día
+                <select name="dia">
+                    {% for d in dias %}<option value="{{ d }}">{{ d }}</option>{% endfor %}
+                </select>
+            </label>
+            <label>Hora de inicio <input type="time" name="inicio" required></label>
+            <label>Hora de fin <input type="time" name="fin" required></label>
+        </div>
+        <div class="modal-botones">
+            <button type="button" class="btn-secundario" data-cerrar>Cancelar</button>
+            <button type="submit" class="btn-primario">Guardar cambios</button>
+        </div>
+    </form>
+</dialog>
+
+<!-- Eliminar -->
+<dialog id="modal-eliminar-horario" class="modal">
+    <form method="post" class="form-modal">
+        {% csrf_token %}
+        <input type="hidden" name="accion" value="eliminar">
+        <input type="hidden" name="id">
+        <h2>Eliminar Horario</h2>
+        <p class="texto-modal">
+            ¿Seguro que deseas eliminar el horario de <strong data-texto="entrenador"></strong>
+            del día <strong data-texto="dia"></strong>?
+        </p>
+        <div class="modal-botones">
+            <button type="button" class="btn-secundario" data-cerrar>Cancelar</button>
+            <button type="submit" class="btn-peligro">Eliminar</button>
+        </div>
+    </form>
+</dialog>
+{% endblock %}

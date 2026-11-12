@@ -1,0 +1,44 @@
+{% extends 'core/base_panel.html' %}
+{% block titulo %}Mis clientes{% endblock %}
+
+{% block contenido %}
+<h1>Mis Clientes</h1>
+<p class="descripcion">
+    Clientes asignados a tu cargo, con su objetivo y programa de entrenamiento actual.
+</p>
+
+<div class="barra-herramientas">
+    <span></span>
+    <input type="search" class="buscador" placeholder="Buscar cliente..." data-filtrar="tabla-mis-clientes">
+</div>
+
+<div class="tabla-contenedor" style="margin-top:8px">
+    <table class="tabla" id="tabla-mis-clientes">
+        <thead>
+            <tr>
+                <th>Cliente</th>
+                <th>Objetivo</th>
+                <th>Programa</th>
+                <th>Días/sem.</th>
+                <th>Último registro</th>
+                <th>Acciones</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for c in clientes %}
+            <tr>
+                <td>{{ c.cliente }}</td>
+                <td>{{ c.objetivo }}</td>
+                <td>{{ c.programa }}</td>
+                <td>{{ c.frecuencia }}</td>
+                <td>{{ c.ultimo }}</td>
+                <td>
+                    <a href="{% url 'plan_entrenamiento' %}" class="btn-accion">Ver plan</a>
+                    <a href="{% url 'progreso' %}" class="btn-accion">Progreso</a>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}

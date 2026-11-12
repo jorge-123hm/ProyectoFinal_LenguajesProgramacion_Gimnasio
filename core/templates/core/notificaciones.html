@@ -1,0 +1,61 @@
+{% extends 'core/base_panel.html' %}
+{% block titulo %}Notificaciones{% endblock %}
+
+{% block contenido %}
+<h1>Notificaciones a Clientes</h1>
+<p class="descripcion">
+    Envía avisos a los socios: vencimiento de membresía, pagos pendientes o comunicados generales.
+</p>
+
+<section class="panel">
+    <h3>Nueva notificación</h3>
+    <form method="post" class="form-panel">
+        {% csrf_token %}
+        <label>Destinatario
+            <select name="destinatario" required>
+                <option>Todos los clientes</option>
+                <option>Clientes con membresía por vencer</option>
+                <option>Clientes con membresía vencida</option>
+                {% for c in clientes %}<option>{{ c }}</option>{% endfor %}
+            </select>
+        </label>
+
+        <label style="margin-top:16px">Mensaje</label>
+        <div class="chips">
+            <button type="button"
+                data-plantilla="Tu membresía está por vencer. Renueva en recepción para no perder tu acceso.">Vencimiento</button>
+            <button type="button"
+                data-plantilla="Tienes un pago pendiente. Acércate a recepción para regularizarlo.">Pago
+                pendiente</button>
+            <button type="button"
+                data-plantilla="Bienvenido a SMART FIT. Tu plan de entrenamiento ya está disponible.">Bienvenida</button>
+        </div>
+        <textarea id="mensaje" name="mensaje" rows="4" maxlength="300" required
+            placeholder="Escribe el mensaje que recibirá el cliente"></textarea>
+
+        <p style="margin-top:16px"><button type="submit" class="btn-primario">Enviar notificación</button></p>
+    </form>
+</section>
+
+<h2 class="titulo-seccion">Historial de envíos</h2>
+<div class="tabla-contenedor">
+    <table class="tabla">
+        <thead>
+            <tr>
+                <th>Fecha</th>
+                <th>Destinatario</th>
+                <th>Mensaje</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for n in enviadas %}
+            <tr>
+                <td>{{ n.fecha }}</td>
+                <td>{{ n.destinatario }}</td>
+                <td>{{ n.mensaje }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}

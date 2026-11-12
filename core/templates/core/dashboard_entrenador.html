@@ -1,0 +1,63 @@
+{% extends 'core/base_panel.html' %}
+{% block titulo %}Dashboard{% endblock %}
+
+{% block contenido %}
+<h1>Bienvenido, {{ nombre_usuario }}</h1>
+<p class="subtitulo">Resumen de tus clientes, planes de entrenamiento y progreso.</p>
+
+<section class="kpis">
+    {% for k in kpis %}
+    <article class="kpi">
+        <span class="kpi-valor">{{ k.valor }}</span>
+        <span class="kpi-titulo">{{ k.titulo }}</span>
+    </article>
+    {% endfor %}
+</section>
+
+<h2 class="titulo-seccion">Información Detallada</h2>
+
+<section class="dos-columnas">
+    <div class="panel">
+        <h3>Mis clientes</h3>
+        <div class="tabla-contenedor">
+            <table class="tabla">
+                <thead>
+                    <tr><th>Cliente</th><th>Programa</th><th>Días/sem.</th></tr>
+                </thead>
+                <tbody>
+                    {% for c in clientes %}
+                    <tr>
+                        <td>{{ c.cliente }}</td>
+                        <td>{{ c.programa }}</td>
+                        <td>{{ c.frecuencia }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        <p style="margin-top:14px"><a href="{% url 'entrenador_clientes' %}" class="btn-secundario">Ver todos</a></p>
+    </div>
+
+    <div class="panel">
+        <h3>Últimos progresos registrados</h3>
+        <div class="tabla-contenedor">
+            <table class="tabla">
+                <thead>
+                    <tr><th>Cliente</th><th>Fecha</th><th>Peso (kg)</th><th>Rep.</th></tr>
+                </thead>
+                <tbody>
+                    {% for r in progresos %}
+                    <tr>
+                        <td>{{ r.cliente }}</td>
+                        <td>{{ r.fecha }}</td>
+                        <td>{{ r.peso }}</td>
+                        <td>{{ r.repeticiones }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        <p style="margin-top:14px"><a href="{% url 'progreso' %}" class="btn-primario">Registrar progreso</a></p>
+    </div>
+</section>
+{% endblock %}

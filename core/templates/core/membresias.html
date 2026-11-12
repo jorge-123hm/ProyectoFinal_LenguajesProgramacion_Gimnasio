@@ -1,0 +1,125 @@
+{% extends 'core/base_panel.html' %}
+{% block titulo %}Membresías{% endblock %}
+
+{% block contenido %}
+<h1>Gestión de Membresías</h1>
+<p class="descripcion">
+    Asigna, renueva o cancela las membresías de los socios y consulta el estado de cada una.
+</p>
+
+<h2 class="titulo-seccion">Planes disponibles</h2>
+<section class="planes">
+    {% for p in planes %}
+    <article class="plan{% if p.destacado %} destacado{% endif %}">
+        <h3>{{ p.nombre }}</h3>
+        <p class="plan-precio">S/. {{ p.precio }}</p>
+        <p class="plan-duracion">por {{ p.duracion }} días</p>
+        <ul>
+            {% for b in p.beneficios %}<li>{{ b }}</li>{% endfor %}
+        </ul>
+    </article>
+    {% endfor %}
+</section>
+
+<section class="panel">
+    <h3>Asignar membresía</h3>
+    <form method="post" class="form-panel form-linea">
+        {% csrf_token %}
+        <input type="hidden" name="accion" value="asignar">
+        <label>Cliente
+            <select name="cliente" required>
+                <option value="">-- Seleccionar --</option>
+                {% for c in clientes %}<option value="{{ c }}">{{ c }}</option>{% endfor %}
+            </select>
+        </label>
+        <label>Plan
+            <select name="plan" required>
+                {% for p in planes %}<option value="{{ p.nombre }}">{{ p.nombre }} - S/. {{ p.precio }}</option>{% endfor %}
+            </select>
+        </label>
+        <label>Fecha de inicio
+            <input type="date" name="inicio" data-hoy required>
+        </label>
+        <button type="submit" class="btn-primario">Asignar</button>
+    </form>
+</section>
+
+<div class="barra-herramientas">
+    <h2 class="titulo-seccion" style="margin:0">Membresías registradas</h2>
+    <input type="search" class="buscador" placeholder="Buscar cliente o plan..." data-filtrar="tabla-membresias">
+</div>
+
+<div class="tabla-contenedor" style="margin-top:12px">
+    <table class="tabla" id="tabla-membresias">
+        <thead>
+            <tr>
+                <th>Cliente</th>
+                <th>Plan</th>
+                <th>Inicio</th>
+                <th>Vencimiento</th>
+                <th>Estado</th>
+                <th>Acciones</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for m in membresias %}
+            <tr data-id="{{ m.id }}" data-cliente="{{ m.cliente }}" data-plan="{{ m.plan }}">
+                <td>{{ m.cliente }}</td>
+                <td>{{ m.plan }}</td>
+                <td>{{ m.inicio }}</td>
+                <td>{{ m.vencimiento }}</td>
+                <td><span class="badge badge-{{ m.estado|lower }}">{{ m.estado }}</span></td>
+                <td>
+                    <button type="button" class="btn-accion" data-abrir="modal-renovar">Renovar</button>
+                    {% if m.estado == 'Activa' %}
+                    <button type="button" class="btn-accion peligro" data-abrir="modal-cancelar">Cancelar</button>
+                    {% endif %}
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+<!-- Renovar -->
+<dialog id="modal-renovar" class="modal">
+    <form method="post" class="form-modal">
+        {% csrf_token %}
+        <input type="hidden" name="accion" value="renovar">
+        <input type="hidden" name="id">
+        <h2>Renovar Membresía</h2>
+        <p class="texto-modal">Cliente: <strong data-texto="cliente"></strong></p>
+        <div class="grid-form" style="margin-top:14px">
+            <label>Plan
+                <select name="plan">
+                    {% for p in planes %}<option value="{{ p.nombre }}">{{ p.nombre }}</option>{% endfor %}
+                </select>
+            </label>
+            <label>Nueva fecha de inicio
+                <input type="date" name="inicio" data-hoy required>
+            </label>
+        </div>
+        <div class="modal-botones">
+            <button type="button" class="btn-secundario" data-cerrar>Cancelar</button>
+            <button type="submit" class="btn-primario">Renovar</button>
+        </div>
+    </form>
+</dialog>
+
+<!-- Cancelar -->
+<dialog id="modal-cancelar" class="modal">
+    <form method="post" class="form-modal">
+        {% csrf_token %}
+        <input type="hidden" name="accion" value="cancelar">
+        <input type="hidden" name="id">
+        <h2>Cancelar Membresía</h2>
+        <p class="texto-modal">
+            ¿Seguro que deseas cancelar la membresía de <strong data-texto="cliente"></strong>?
+        </p>
+        <div class="modal-botones">
+            <button type="button" class="btn-secundario" data-cerrar>Volver</button>
+            <button type="submit" class="btn-peligro">Cancelar membresía</button>
+        </div>
+    </form>
+</dialog>
+{% endblock %}

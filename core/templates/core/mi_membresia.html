@@ -1,0 +1,42 @@
+{% extends 'core/base_panel.html' %}
+{% block titulo %}Mi Membresía{% endblock %}
+
+{% block contenido %}
+<h1>Mi Membresía</h1>
+<p class="descripcion">Consulta el estado de tu membresía y solicita renovarla o cambiar de plan.</p>
+
+<section class="panel">
+    <h3>Estado actual</h3>
+    <dl class="detalle">
+        <dt>Plan</dt><dd>{{ membresia.plan }}</dd>
+        <dt>Estado</dt><dd><span class="badge badge-{{ membresia.estado|lower }}">{{ membresia.estado }}</span></dd>
+        <dt>Fecha de inicio</dt><dd>{{ membresia.inicio }}</dd>
+        <dt>Fecha de vencimiento</dt><dd>{{ membresia.vencimiento }}</dd>
+        <dt>Precio</dt><dd>S/. {{ membresia.precio }}</dd>
+        <dt>Tiempo restante</dt>
+        <dd>
+            Te quedan <strong>{{ membresia.dias }} días</strong>
+            <progress class="progreso-barra" value="{{ membresia.porcentaje }}" max="100" aria-label="Progreso de la membresía"></progress>
+        </dd>
+    </dl>
+</section>
+
+<h2 class="titulo-seccion">Renovar o cambiar de plan</h2>
+<section class="planes">
+    {% for p in planes %}
+    <article class="plan{% if p.destacado %} destacado{% endif %}">
+        <h3>{{ p.nombre }}</h3>
+        <p class="plan-precio">S/. {{ p.precio }}</p>
+        <p class="plan-duracion">por {{ p.duracion }} días</p>
+        <ul>
+            {% for b in p.beneficios %}<li>{{ b }}</li>{% endfor %}
+        </ul>
+        <form method="post">
+            {% csrf_token %}
+            <input type="hidden" name="plan" value="{{ p.nombre }}">
+            <button type="submit" class="btn-primario">Solicitar este plan</button>
+        </form>
+    </article>
+    {% endfor %}
+</section>
+{% endblock %}

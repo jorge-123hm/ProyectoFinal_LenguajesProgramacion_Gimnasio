@@ -1,0 +1,36 @@
+{% extends 'core/base_panel.html' %}
+{% block titulo %}Mi Plan{% endblock %}
+
+{% block contenido %}
+<h1>Mi Plan de Entrenamiento</h1>
+<p class="descripcion">Programa personalizado asignado por tu entrenador.</p>
+
+<section class="panel">
+    <h3>{{ plan.programa }}</h3>
+    <dl class="detalle">
+        <dt>Objetivo</dt><dd>{{ plan.objetivo }}</dd>
+        <dt>Frecuencia</dt><dd>{{ plan.frecuencia }} días por semana</dd>
+        <dt>Entrenador</dt><dd>{{ plan.entrenador }}</dd>
+        <dt>Asignado el</dt><dd>{{ plan.desde }}</dd>
+    </dl>
+</section>
+
+<h2 class="titulo-seccion">Rutina semanal</h2>
+<div class="tabla-contenedor">
+    <table class="tabla">
+        <thead>
+            <tr><th>Día</th><th>Enfoque</th><th>Ejercicios</th><th>Series x Rep.</th></tr>
+        </thead>
+        <tbody>
+            {% for d in plan.rutina %}
+            <tr>
+                <td><strong>{{ d.dia }}</strong></td>
+                <td>{{ d.enfoque }}</td>
+                <td>{{ d.ejercicios }}</td>
+                <td>{{ d.series }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}

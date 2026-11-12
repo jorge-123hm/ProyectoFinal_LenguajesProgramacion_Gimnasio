@@ -1,0 +1,74 @@
+{% extends 'core/base_panel.html' %}
+{% block titulo %}Reporte de Facturación{% endblock %}
+
+{% block contenido %}
+<h1>Reporte de Facturación</h1>
+<p class="descripcion">Resumen de los ingresos del gimnasio por periodo.</p>
+
+<section class="panel no-imprimir">
+    <h3>Filtros</h3>
+    <form method="get" class="form-panel form-linea">
+        <label>Desde <input type="date" name="desde" value="2026-09-01"></label>
+        <label>Hasta <input type="date" name="hasta" data-hoy></label>
+        <label>Estado
+            <select name="estado">
+                <option value="">Todos</option>
+                <option>Emitida</option>
+                <option>Anulada</option>
+            </select>
+        </label>
+        <button type="submit" class="btn-primario">Generar</button>
+    </form>
+</section>
+
+<section class="kpis">
+    {% for k in kpis %}
+    <article class="kpi">
+        <span class="kpi-valor">{{ k.valor }}</span>
+        <span class="kpi-titulo">{{ k.titulo }}</span>
+    </article>
+    {% endfor %}
+</section>
+
+<section class="dos-columnas" style="margin-top:22px">
+    <div class="panel">
+        <h3>Ingresos por mes (S/.)</h3>
+        <div class="barras">
+            {% for m in ingresos %}
+            <div class="barra-col">
+                <span class="barra-valor">{{ m.monto }}</span>
+                <div class="barra-area"><div class="barra" style="height: {{ m.altura }}%"></div></div>
+                <span class="barra-mes">{{ m.mes }}</span>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+
+    <div class="panel">
+        <h3>Detalle de facturas</h3>
+        <div class="tabla-contenedor">
+            <table class="tabla">
+                <thead>
+                    <tr><th>N°</th><th>Cliente</th><th>Fecha</th><th class="num">Monto</th><th>Estado</th></tr>
+                </thead>
+                <tbody>
+                    {% for f in facturas %}
+                    <tr>
+                        <td>{{ f.id }}</td>
+                        <td>{{ f.cliente }}</td>
+                        <td>{{ f.fecha }}</td>
+                        <td class="num">S/. {{ f.monto }}</td>
+                        <td><span class="badge badge-{{ f.estado|lower }}">{{ f.estado }}</span></td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</section>
+
+<p class="no-imprimir">
+    <button type="button" class="btn-primario" data-imprimir>Imprimir / Guardar como PDF</button>
+    <a href="{% url 'pagos' %}" class="btn-secundario">Volver a Pagos</a>
+</p>
+{% endblock %}

@@ -1,0 +1,35 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SMART FIT - {% block titulo %}Panel{% endblock %}</title>
+    <link rel="icon" type="image/png" href="{% static 'core/img/logo.png' %}">
+    <link rel="stylesheet" href="{% static 'core/css/dashboard.css' %}">
+    <link rel="stylesheet" href="{% static 'core/css/panel.css' %}">
+</head>
+
+<body>
+
+    <aside class="sidebar">
+        {% include 'core/_perfil.html' %}
+
+        <nav class="menu">
+            {% for item in menu %}
+            <a href="{% url item.url %}"
+                class="{% if request.resolver_match.url_name == item.url %}activo{% endif %}">{{ item.nombre }}</a>
+            {% endfor %}
+        </nav>
+    </aside>
+
+    <main class="contenido">
+        {% include 'core/_mensajes.html' %}
+        {% block contenido %}{% endblock %}
+    </main>
+
+    <script src="{% static 'core/js/panel.js' %}"></script>
+</body>
+
+</html>

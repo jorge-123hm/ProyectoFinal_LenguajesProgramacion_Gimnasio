@@ -1,0 +1,28 @@
+{% extends 'core/base_panel.html' %}
+{% block titulo %}Mis Pagos{% endblock %}
+
+{% block contenido %}
+<h1>Mis Pagos</h1>
+<p class="descripcion">Historial de pagos y facturas de tu membresía.</p>
+
+<div class="tabla-contenedor">
+    <table class="tabla">
+        <thead>
+            <tr><th>N° Factura</th><th>Concepto</th><th>Fecha</th><th>Monto</th><th>Estado</th></tr>
+        </thead>
+        <tbody>
+            {% for p in pagos %}
+            <tr>
+                <td>{{ p.id }}</td>
+                <td>{{ p.concepto }}</td>
+                <td>{{ p.fecha }}</td>
+                <td>S/. {{ p.monto }}</td>
+                <td><span class="badge badge-{{ p.estado|lower }}">{{ p.estado }}</span></td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="5">Aún no tienes pagos registrados.</td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}

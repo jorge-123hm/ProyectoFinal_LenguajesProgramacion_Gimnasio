@@ -13,7 +13,7 @@ INICIO_POR_ROL = {
     ADMIN: 'dashboard',
     RECEPCION: 'dashboard',
     FINANCIERO: 'dashboard',
-    ENTRENADOR: 'plan_entrenamiento',
+    ENTRENADOR: 'dashboard_entrenador',
     CLIENTE: 'inicio_cliente',
 }
 

@@ -1,0 +1,89 @@
+{% extends 'core/base_panel.html' %}
+{% block titulo %}Pagos{% endblock %}
+
+{% block contenido %}
+<h1>Gestión de Pagos</h1>
+<p class="descripcion">
+    Registra los pagos de los socios, emite la factura correspondiente y consulta el historial.
+</p>
+
+<section class="panel">
+    <h3>Registrar Pago</h3>
+    <form method="post" class="form-panel form-linea">
+        {% csrf_token %}
+        <input type="hidden" name="accion" value="registrar">
+        <label>Cliente
+            <select name="cliente" required>
+                <option value="">-- Seleccionar --</option>
+                {% for c in clientes %}<option value="{{ c }}">{{ c }}</option>{% endfor %}
+            </select>
+        </label>
+        <label>Monto (S/.)
+            <input type="number" name="monto" min="0" step="0.01" placeholder="Monto del pago" required>
+        </label>
+        <label>Fecha
+            <input type="date" name="fecha" data-hoy required>
+        </label>
+        <label>Método de pago
+            <select name="metodo">
+                <option>Efectivo</option>
+                <option>Yape / Plin</option>
+                <option>Tarjeta</option>
+                <option>Transferencia</option>
+            </select>
+        </label>
+        <button type="submit" class="btn-primario">Registrar Pago</button>
+    </form>
+</section>
+
+<section class="panel">
+    <h3>Generar Reporte de Facturación</h3>
+    <p class="texto-suave" style="margin-bottom:14px">
+        Consulta el total facturado por periodo y exporta el reporte.
+    </p>
+    <a href="{% url 'reporte_facturacion' %}" class="btn-primario">Generar Reporte</a>
+</section>
+
+<div class="barra-herramientas">
+    <h2 class="titulo-seccion" style="margin:0">Facturas Generadas</h2>
+    <input type="search" class="buscador" placeholder="Buscar factura o cliente..." data-filtrar="tabla-facturas">
+</div>
+
+<div class="tabla-contenedor" style="margin-top:12px">
+    <table class="tabla" id="tabla-facturas">
+        <thead>
+            <tr>
+                <th>ID Factura</th>
+                <th>Cliente</th>
+                <th>Concepto</th>
+                <th>Monto</th>
+                <th>Fecha</th>
+                <th>Estado</th>
+                <th>Acciones</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for f in facturas %}
+            <tr>
+                <td>{{ f.id }}</td>
+                <td>{{ f.cliente }}</td>
+                <td>{{ f.concepto }}</td>
+                <td>S/. {{ f.monto }}</td>
+                <td>{{ f.fecha }}</td>
+                <td><span class="badge badge-{{ f.estado|lower }}">{{ f.estado }}</span></td>
+                <td>
+                    {% if f.estado == 'Emitida' %}
+                    <form method="post" data-confirmar="¿Seguro que deseas anular la factura {{ f.id }}?">
+                        {% csrf_token %}
+                        <input type="hidden" name="accion" value="anular">
+                        <input type="hidden" name="id" value="{{ f.id }}">
+                        <button type="submit" class="btn-accion peligro">Anular</button>
+                    </form>
+                    {% endif %}
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}
