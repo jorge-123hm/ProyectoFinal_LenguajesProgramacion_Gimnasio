@@ -153,4 +153,4 @@ se crean con `python manage.py migrate`.
 - Saire Flores Guadalupe Dayana
 - Huaynalaya Montes Pedro David Jorge
 
-**Curso:** Lenguajes de Programacion · **Docente:** Sardon Paniagua Anibals
+**Curso:** Lenguajes de Programacion · **Docente:** Sardon Paniagua Anibal
