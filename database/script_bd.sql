@@ -204,3 +204,29 @@ CREATE TABLE programacion_reservaclase (
     creada_en   TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     UNIQUE (clase_id, cliente_id)
 );
+
+
+-- ---------------------------------------------------------------------
+-- 7. ÍNDICES sobre claves foráneas
+-- ---------------------------------------------------------------------
+CREATE INDEX idx_notificacion_cliente   ON cuentas_notificacion (cliente_id);
+CREATE INDEX idx_membresia_cliente      ON membresias_membresia (cliente_id);
+CREATE INDEX idx_membresia_plan         ON membresias_membresia (plan_id);
+CREATE INDEX idx_membresia_vencimiento  ON membresias_membresia (fecha_vencimiento);
+CREATE INDEX idx_factura_cliente        ON facturacion_factura (cliente_id);
+CREATE INDEX idx_factura_membresia      ON facturacion_factura (membresia_id);
+CREATE INDEX idx_pago_factura           ON facturacion_pago (factura_id);
+CREATE INDEX idx_programa_cliente       ON entrenamiento_programaentrenamiento (cliente_id);
+CREATE INDEX idx_programa_entrenador    ON entrenamiento_programaentrenamiento (entrenador_id);
+CREATE INDEX idx_sesion_programa        ON entrenamiento_sesionentrenamiento (programa_id);
+CREATE INDEX idx_progreso_cliente       ON entrenamiento_progresocliente (cliente_id);
+CREATE INDEX idx_progreso_entrenador    ON entrenamiento_progresocliente (entrenador_id);
+CREATE INDEX idx_horario_entrenador     ON programacion_horarioentrenador (entrenador_id);
+CREATE INDEX idx_clase_entrenador       ON programacion_clasegrupal (entrenador_id);
+CREATE INDEX idx_clase_fecha            ON programacion_clasegrupal (fecha_hora);
+CREATE INDEX idx_reserva_cliente        ON programacion_reservaclase (cliente_id);
+
+-- Nota: hay tablas que Django genera automáticamente al hacer migraciones,
+-- por eso no se añadieron en este script.
+
+COMMIT;
