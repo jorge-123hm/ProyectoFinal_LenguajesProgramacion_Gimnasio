@@ -72,6 +72,7 @@ CREATE TABLE membresias_membresia (
     fecha_vencimiento  DATE        NOT NULL,
     estado             VARCHAR(12) NOT NULL DEFAULT 'ACTIVA'
                        CHECK (estado IN ('ACTIVA', 'VENCIDA', 'CANCELADA')),
+    motivo_cancelacion TEXT        NOT NULL DEFAULT '',
     creada_en          TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     CHECK (fecha_vencimiento >= fecha_inicio)
 );

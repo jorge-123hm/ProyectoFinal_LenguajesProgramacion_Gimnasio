@@ -29,12 +29,12 @@
         <label>Cliente
             <select name="cliente" required>
                 <option value="">-- Seleccionar --</option>
-                {% for c in clientes %}<option value="{{ c }}">{{ c }}</option>{% endfor %}
+                {% for c in clientes %}<option value="{{ c.id }}">{{ c.nombre }}</option>{% endfor %}
             </select>
         </label>
         <label>Plan
             <select name="plan" required>
-                {% for p in planes %}<option value="{{ p.nombre }}">{{ p.nombre }} - S/. {{ p.precio }}</option>{% endfor %}
+                {% for p in planes %}<option value="{{ p.nombre }}">{{ p.nombre }} - S/. {{ p.precio }}</option>{%endfor %}
             </select>
         </label>
         <label>Fecha de inicio
@@ -63,7 +63,7 @@
         </thead>
         <tbody>
             {% for m in membresias %}
-            <tr data-id="{{ m.id }}" data-cliente="{{ m.cliente }}" data-plan="{{ m.plan }}">
+            <tr data-id="{{ m.id }}" data-cliente="{{ m.cliente }}" data-plan="{{ m.plan }}" data-motivo="">
                 <td>{{ m.cliente }}</td>
                 <td>{{ m.plan }}</td>
                 <td>{{ m.inicio }}</td>
@@ -116,6 +116,9 @@
         <p class="texto-modal">
             ¿Seguro que deseas cancelar la membresía de <strong data-texto="cliente"></strong>?
         </p>
+        <label style="margin-top:14px">Motivo de la cancelación
+            <textarea name="motivo" rows="3" placeholder="Ejemplo: el cliente se mudó de ciudad"></textarea>
+        </label>
         <div class="modal-botones">
             <button type="button" class="btn-secundario" data-cerrar>Volver</button>
             <button type="submit" class="btn-peligro">Cancelar membresía</button>

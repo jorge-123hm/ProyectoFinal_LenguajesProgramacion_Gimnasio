@@ -12,6 +12,13 @@ from django.views import View
 from django.db.models import Prefetch
 from membresias.models import Membresia, PlanMembresia
 
+from datetime import date
+
+from membresias.servicios import (
+    ReglaDeNegocio, asignar_membresia, cancelar_membresia,
+    marcar_vencidas, renovar_membresia,
+)
+
 from cuentas.models import Cliente, Perfil
 
 from . import datos_demo as demo
@@ -273,6 +280,7 @@ class UsuariosVista(VistaPanel):
     template_name = 'core/usuarios.html'
 
     def contexto(self, request):
+        marcar_vencidas()
         activas = Prefetch(
             'membresias',
             queryset=(Membresia.objects
@@ -397,22 +405,116 @@ class UsuariosVista(VistaPanel):
 
         messages.success(request, 'Usuario eliminado correctamente.')
 
+def _nombre_completo(cliente):
+    return cliente.usuario.get_full_name() or cliente.usuario.username
+
+
+def _obtener_fecha(texto):
+    try:
+        return date.fromisoformat(texto)
+    except ValueError:
+        raise ReglaDeNegocio('La fecha ingresada no es válida.')
+
+
+def _obtener_plan(nombre):
+    plan = PlanMembresia.objects.filter(nombre=nombre, activo=True).first()
+    if plan is None:
+        raise ReglaDeNegocio('El plan seleccionado no existe o no está activo.')
+    return plan
+
+
+def _obtener_cliente(pk):
+    try:
+        return Cliente.objects.select_related('usuario').get(pk=pk, activo=True)
+    except (Cliente.DoesNotExist, ValueError):
+        raise ReglaDeNegocio('El cliente seleccionado no existe.')
+
+
+def _obtener_membresia(pk):
+    try:
+        return Membresia.objects.select_related('cliente__usuario', 'plan').get(pk=pk)
+    except (Membresia.DoesNotExist, ValueError):
+        raise ReglaDeNegocio('La membresía seleccionada no existe.')
 
 class MembresiasVista(VistaPanel):
     roles_permitidos = (ADMIN, RECEPCION)
     template_name = 'core/membresias.html'
-    mensajes_accion = {
-        'asignar': 'Membresía asignada correctamente.',
-        'renovar': 'Membresía renovada correctamente.',
-        'cancelar': 'Membresía cancelada correctamente.',
-    }
 
     def contexto(self, request):
+        marcar_vencidas()
+        planes = list(PlanMembresia.objects.filter(activo=True).order_by('precio'))
+        destacado = planes[-1].pk if len(planes) > 1 else None
+        membresias = (Membresia.objects
+                    .filter(cliente__activo=True)
+                    .select_related('cliente__usuario', 'plan')
+                    .order_by('-creada_en'))
+        clientes = (Cliente.objects
+                    .filter(activo=True)
+                    .select_related('usuario')
+                    .order_by('usuario__last_name', 'usuario__first_name'))
         return {
-            'planes': demo.PLANES_MEMBRESIA,
-            'membresias': demo.MEMBRESIAS,
-            'clientes': demo.NOMBRES_CLIENTES,
+            'planes': [
+                {
+                    'nombre': p.nombre,
+                    'precio': f'{p.precio:.2f}',
+                    'duracion': p.duracion_dias,
+                    'destacado': p.pk == destacado,
+                    'beneficios': [l.strip() for l in p.descripcion.splitlines() if l.strip()],
+                }
+                for p in planes
+            ],
+            'membresias': [
+                {
+                    'id': m.pk,
+                    'cliente': _nombre_completo(m.cliente),
+                    'plan': m.plan.nombre,
+                    'inicio': m.fecha_inicio.isoformat(),
+                    'vencimiento': m.fecha_vencimiento.isoformat(),
+                    'estado': m.get_estado_display(),
+                }
+                for m in membresias
+            ],
+            'clientes': [{'id': c.pk, 'nombre': _nombre_completo(c)} for c in clientes],
         }
+
+    def post(self, request):
+        accion = request.POST.get('accion')
+        try:
+            if accion == 'asignar':
+                self._asignar(request)
+            elif accion == 'renovar':
+                self._renovar(request)
+            elif accion == 'cancelar':
+                self._cancelar(request)
+        except ReglaDeNegocio as error:
+            messages.error(request, str(error))
+        return redirect('membresias')
+
+    def _asignar(self, request):
+        cliente = _obtener_cliente(request.POST.get('cliente'))
+        plan = _obtener_plan(request.POST.get('plan'))
+        inicio = _obtener_fecha(request.POST.get('inicio', ''))
+        membresia = asignar_membresia(cliente, plan, inicio)
+        messages.success(
+            request,
+            f'Membresía {plan.nombre} asignada a {_nombre_completo(cliente)} '
+            f'hasta el {membresia.fecha_vencimiento:%d/%m/%Y}.',
+        )
+
+    def _renovar(self, request):
+        membresia = _obtener_membresia(request.POST.get('id'))
+        plan = _obtener_plan(request.POST.get('plan'))
+        inicio = _obtener_fecha(request.POST.get('inicio', ''))
+        membresia = renovar_membresia(membresia, plan, inicio)
+        messages.success(
+            request,
+            f'Membresía renovada. Nuevo vencimiento: {membresia.fecha_vencimiento:%d/%m/%Y}.',
+        )
+
+    def _cancelar(self, request):
+        membresia = _obtener_membresia(request.POST.get('id'))
+        cancelar_membresia(membresia, request.POST.get('motivo', '').strip())
+        messages.success(request, 'Membresía cancelada correctamente.')
 
 
 class PagosVista(VistaPanel):

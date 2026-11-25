@@ -40,6 +40,7 @@ class Membresia(models.Model):
         choices=Estado.choices,
         default=Estado.ACTIVA,
     )
+    motivo_cancelacion = models.TextField(blank=True)
     creada_en = models.DateTimeField(auto_now_add=True)
 
     def save(self, *args, **kwargs):
