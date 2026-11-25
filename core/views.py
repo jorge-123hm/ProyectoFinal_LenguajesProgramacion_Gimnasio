@@ -19,6 +19,15 @@ from membresias.servicios import (
     marcar_vencidas, renovar_membresia,
 )
 
+from decimal import Decimal, InvalidOperation
+
+from django.db.models import Count, Sum
+from django.db.models.functions import TruncMonth
+from django.utils import timezone
+
+from facturacion.models import Factura
+from facturacion.servicios import anular_factura, registrar_pago
+
 from cuentas.models import Cliente, Perfil
 
 from . import datos_demo as demo
@@ -180,27 +189,13 @@ class VistaPanel(RolRequeridoMixin, View):
 
 # ---------- Administrador / Recepcionista / Financiero ----------
 
-
-def _resumen_facturas():
-    emitidas = [f for f in demo.FACTURAS if f['estado'] == 'Emitida']
-    anuladas = [f for f in demo.FACTURAS if f['estado'] == 'Anulada']
-    total = sum(float(f['monto']) for f in emitidas)
-    promedio = total / len(emitidas) if emitidas else 0
-    return {
-        'total': f'S/. {total:,.0f}',
-        'emitidas': len(emitidas),
-        'anuladas': len(anuladas),
-        'promedio': f'S/. {promedio:,.0f}',
-    }
-
-
 class DashboardVista(VistaPanel):
     roles_permitidos = (ADMIN, RECEPCION, FINANCIERO)
     template_name = 'core/dashboard.html'
 
     def contexto(self, request):
         rol = rol_de(request.user)
-        res = _resumen_facturas()
+        res = _resumen_facturas(Factura.objects.all())
         kpis = {
             ADMIN: [
                 {'valor': 9, 'titulo': 'Clientes registrados'},
@@ -224,8 +219,8 @@ class DashboardVista(VistaPanel):
         return {
             'kpis': kpis[rol],
             'por_vencer': demo.POR_VENCER,
-            'facturas': demo.FACTURAS[:5],
-            'ingresos': demo.INGRESOS_MESES,
+            'facturas': [_factura_a_dict(f) for f in _facturas_qs().order_by('-fecha_emision', '-id')[:5]],
+            'ingresos': _ingresos_por_mes(),
         }
 
 def _leer_datos_cliente(post):
@@ -516,17 +511,127 @@ class MembresiasVista(VistaPanel):
         cancelar_membresia(membresia, request.POST.get('motivo', '').strip())
         messages.success(request, 'Membresía cancelada correctamente.')
 
+MESES = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic']
+
+
+def _facturas_qs():
+    return Factura.objects.select_related('cliente__usuario', 'membresia__plan')
+
+
+def _factura_a_dict(f):
+    return {
+        'id': f.numero,
+        'cliente': _nombre_completo(f.cliente),
+        'concepto': f'Membresía {f.membresia.plan.nombre}' if f.membresia else 'Servicio adicional',
+        'monto': f'{f.total:.2f}',
+        'fecha': f.fecha_emision.isoformat(),
+        'estado': f.get_estado_display(),
+    }
+
+
+def _resumen_facturas(queryset):
+    """Indicadores de un conjunto de facturas (las anuladas no cuentan en el total)."""
+    validas = queryset.exclude(estado=Factura.Estado.ANULADA)
+    agregado = validas.aggregate(total=Sum('total'), cantidad=Count('pk'))
+    total = agregado['total'] or Decimal('0')
+    cantidad = agregado['cantidad']
+    promedio = total / cantidad if cantidad else Decimal('0')
+    return {
+        'total': f'S/. {total:,.0f}',
+        'emitidas': cantidad,
+        'anuladas': queryset.filter(estado=Factura.Estado.ANULADA).count(),
+        'promedio': f'S/. {promedio:,.0f}',
+    }
+
+
+def _inicios_de_mes(hoy, cantidad):
+    inicios = []
+    for atras in range(cantidad - 1, -1, -1):
+        mes = hoy.month - atras
+        anio = hoy.year
+        while mes <= 0:
+            mes += 12
+            anio -= 1
+        inicios.append(date(anio, mes, 1))
+    return inicios
+
+
+def _ingresos_por_mes(cantidad=6):
+    """Total facturado por mes (sin anuladas) en los últimos meses, para el gráfico."""
+    inicios = _inicios_de_mes(timezone.localdate(), cantidad)
+    por_mes = (Factura.objects
+            .exclude(estado=Factura.Estado.ANULADA)
+            .filter(fecha_emision__gte=inicios[0])
+            .annotate(mes=TruncMonth('fecha_emision'))
+            .values('mes')
+            .annotate(suma=Sum('total')))
+    totales = {(fila['mes'].year, fila['mes'].month): fila['suma'] for fila in por_mes}
+    valores = [totales.get((i.year, i.month), Decimal('0')) for i in inicios]
+    maximo = max(valores) if valores else Decimal('0')
+    return [
+        {
+            'mes': MESES[i.month - 1],
+            'monto': f'{v:.0f}',
+            'altura': round(v / maximo * 100) if maximo else 0,
+        }
+        for i, v in zip(inicios, valores)
+    ]
+
+
+def _obtener_monto(texto):
+    try:
+        monto = Decimal(texto)
+    except (InvalidOperation, TypeError):
+        raise ReglaDeNegocio('El monto ingresado no es válido.')
+    if not monto.is_finite() or monto > Decimal('99999999.99'):
+        raise ReglaDeNegocio('El monto ingresado no es válido.')
+    return monto.quantize(Decimal('0.01'))
+
+
+def _fecha_o_none(texto):
+    try:
+        return date.fromisoformat(texto)
+    except (TypeError, ValueError):
+        return None
+
 
 class PagosVista(VistaPanel):
     roles_permitidos = (ADMIN, FINANCIERO)
     template_name = 'core/pagos.html'
-    mensajes_accion = {
-        'registrar': 'Pago registrado y factura emitida correctamente.',
-        'anular': 'Factura anulada correctamente.',
-    }
 
     def contexto(self, request):
-        return {'facturas': demo.FACTURAS, 'clientes': demo.NOMBRES_CLIENTES}
+        facturas = _facturas_qs().order_by('-fecha_emision', '-id')
+        clientes = (Cliente.objects
+                    .filter(activo=True)
+                    .select_related('usuario')
+                    .order_by('usuario__last_name', 'usuario__first_name'))
+        return {
+            'facturas': [_factura_a_dict(f) for f in facturas],
+            'clientes': [{'id': c.pk, 'nombre': _nombre_completo(c)} for c in clientes],
+        }
+
+    def post(self, request):
+        accion = request.POST.get('accion')
+        try:
+            if accion == 'registrar':
+                cliente = _obtener_cliente(request.POST.get('cliente'))
+                monto = _obtener_monto(request.POST.get('monto'))
+                fecha = _obtener_fecha(request.POST.get('fecha', ''))
+                factura = registrar_pago(
+                    cliente, monto, fecha,
+                    request.POST.get('metodo'),
+                    request.POST.get('concepto', 'membresia'),
+                )
+                messages.success(
+                    request,
+                    f'Pago de S/. {monto:.2f} registrado. Factura {factura.numero} emitida.',
+                )
+            elif accion == 'anular':
+                factura = anular_factura(request.POST.get('id'))
+                messages.success(request, f'Factura {factura.numero} anulada correctamente.')
+        except ReglaDeNegocio as error:
+            messages.error(request, str(error))
+        return redirect('pagos')
 
 
 class ReporteFacturacionVista(VistaPanel):
@@ -534,10 +639,29 @@ class ReporteFacturacionVista(VistaPanel):
     template_name = 'core/reporte_facturacion.html'
 
     def contexto(self, request):
-        res = _resumen_facturas()
+        hoy = timezone.localdate()
+        desde = _fecha_o_none(request.GET.get('desde')) or _inicios_de_mes(hoy, 6)[0]
+        hasta = _fecha_o_none(request.GET.get('hasta')) or hoy
+        if desde > hasta:
+            messages.error(request, 'La fecha inicial no puede ser posterior a la final.')
+            desde, hasta = _inicios_de_mes(hoy, 6)[0], hoy
+
+        estado = request.GET.get('estado', '')
+        facturas = _facturas_qs().filter(fecha_emision__gte=desde, fecha_emision__lte=hasta)
+        if estado in Factura.Estado.values:
+            facturas = facturas.filter(estado=estado)
+        else:
+            estado = ''
+
+        res = _resumen_facturas(facturas)
+        if not facturas.exists():
+            messages.warning(request, 'No hay facturas en el periodo seleccionado.')
+
         return {
-            'facturas': demo.FACTURAS,
-            'ingresos': demo.INGRESOS_MESES,
+            'filtros': {'desde': desde.isoformat(), 'hasta': hasta.isoformat(), 'estado': estado},
+            'estados': [{'valor': v, 'texto': t} for v, t in Factura.Estado.choices],
+            'facturas': [_factura_a_dict(f) for f in facturas.order_by('-fecha_emision', '-id')],
+            'ingresos': _ingresos_por_mes(),
             'kpis': [
                 {'valor': res['total'], 'titulo': 'Total facturado'},
                 {'valor': res['emitidas'], 'titulo': 'Facturas emitidas'},

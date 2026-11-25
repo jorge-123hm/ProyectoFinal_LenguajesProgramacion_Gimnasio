@@ -36,12 +36,12 @@ class Factura(models.Model):
 
     def save(self, *args, **kwargs):
         self.total = self.subtotal + self.impuesto
+        super().save(*args, **kwargs)
 
         if not self.numero:
-            super().save(*args, **kwargs)
             self.numero = f"FAC-{timezone.now():%Y}-{self.pk:06d}"
+            super().save(update_fields=["numero"])
 
-        super().save(*args, **kwargs)
 
     def __str__(self):
         return self.numero or "Factura sin número"
