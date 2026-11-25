@@ -9,6 +9,9 @@ from django.shortcuts import redirect, render
 from django.utils.http import url_has_allowed_host_and_scheme
 from django.views import View
 
+from django.db.models import Prefetch
+from membresias.models import Membresia, PlanMembresia
+
 from cuentas.models import Cliente, Perfil
 
 from . import datos_demo as demo
@@ -218,18 +221,181 @@ class DashboardVista(VistaPanel):
             'ingresos': demo.INGRESOS_MESES,
         }
 
+def _leer_datos_cliente(post):
+    return {
+        campo: post.get(campo, '').strip()
+        for campo in ('nombre', 'apellidos', 'dni', 'telefono', 'email')
+    }
+
+
+def _validar_cliente(datos, cliente=None):
+    """Devuelve la lista de errores. Al editar, se pasa el cliente para ignorar sus propios datos."""
+    errores = []
+
+    if not all(datos.values()):
+        errores.append('Completa todos los campos.')
+
+    if datos['dni'] and not (datos['dni'].isdigit() and len(datos['dni']) == 8):
+        errores.append('El DNI debe tener exactamente 8 dígitos.')
+
+    if len(datos['nombre']) > 100 or len(datos['apellidos']) > 100:
+        errores.append('El nombre y los apellidos no pueden pasar de 100 caracteres.')
+
+    if len(datos['telefono']) > 20:
+        errores.append('El teléfono no puede pasar de 20 caracteres.')
+
+    if datos['email']:
+        try:
+            validate_email(datos['email'])
+            if len(datos['email']) > 150:
+                errores.append('El correo es demasiado largo.')
+        except ValidationError:
+            errores.append('Ingresa un correo electrónico válido.')
+
+        usuarios = User.objects.all()
+        if cliente is not None:
+            usuarios = usuarios.exclude(pk=cliente.usuario_id)
+        if (usuarios.filter(email__iexact=datos['email']).exists()
+                or usuarios.filter(username__iexact=datos['email']).exists()):
+            errores.append('Ya existe una cuenta con ese correo.')
+
+    if datos['dni']:
+        clientes = Cliente.objects.all()
+        if cliente is not None:
+            clientes = clientes.exclude(pk=cliente.pk)
+        if clientes.filter(documento=datos['dni']).exists():
+            errores.append('Ya existe un cliente registrado con ese DNI.')
+
+    return errores
 
 class UsuariosVista(VistaPanel):
     roles_permitidos = (ADMIN, RECEPCION)
     template_name = 'core/usuarios.html'
-    mensajes_accion = {
-        'agregar': 'Usuario agregado correctamente.',
-        'modificar': 'Usuario modificado correctamente.',
-        'eliminar': 'Usuario eliminado correctamente.',
-    }
 
     def contexto(self, request):
-        return {'usuarios': demo.CLIENTES}
+        activas = Prefetch(
+            'membresias',
+            queryset=(Membresia.objects
+                    .filter(estado=Membresia.Estado.ACTIVA)
+                    .select_related('plan')
+                    .order_by('-fecha_vencimiento')),
+            to_attr='activas',
+        )
+        clientes = (Cliente.objects
+                    .filter(activo=True)
+                    .select_related('usuario')
+                    .prefetch_related(activas)
+                    .order_by('usuario__last_name', 'usuario__first_name'))
+        return {
+            'usuarios': [
+                {
+                    'id': c.pk,
+                    'nombre': c.usuario.first_name,
+                    'apellidos': c.usuario.last_name,
+                    'dni': c.documento,
+                    'telefono': c.telefono,
+                    'email': c.usuario.email,
+                    'membresia': c.activas[0].plan.nombre if c.activas else 'Sin membresía',
+                }
+                for c in clientes
+            ]
+        }
+
+    def post(self, request):
+        accion = request.POST.get('accion')
+        if accion == 'agregar':
+            self._agregar(request)
+        elif accion == 'modificar':
+            self._modificar(request)
+        elif accion == 'eliminar':
+            self._eliminar(request)
+        return redirect('usuarios')
+
+    def _agregar(self, request):
+        datos = _leer_datos_cliente(request.POST)
+        nombre_plan = request.POST.get('membresia', 'Sin membresía')
+        errores = _validar_cliente(datos)
+
+        plan = None
+        if nombre_plan != 'Sin membresía':
+            plan = PlanMembresia.objects.filter(nombre=nombre_plan, activo=True).first()
+            if plan is None:
+                errores.append(f'El plan «{nombre_plan}» no existe. Créalo en el panel de administración.')
+
+        if errores:
+            for e in errores:
+                messages.error(request, e)
+            return
+
+        with transaction.atomic():
+            usuario = User.objects.create_user(
+                username=datos['email'],
+                email=datos['email'],
+                password=datos['dni'],  # contraseña inicial = DNI
+                first_name=datos['nombre'],
+                last_name=datos['apellidos'],
+            )
+            Perfil.objects.create(usuario=usuario, rol=CLIENTE)
+            cliente = Cliente.objects.create(
+                usuario=usuario,
+                documento=datos['dni'],
+                telefono=datos['telefono'],
+            )
+            if plan:
+                Membresia.objects.create(cliente=cliente, plan=plan)
+
+        messages.success(request, 'Usuario agregado correctamente. Su contraseña inicial es su DNI.')
+
+    def _cliente_seleccionado(self, request):
+        try:
+            return Cliente.objects.select_related('usuario').get(pk=request.POST.get('id'), activo=True)
+        except (Cliente.DoesNotExist, ValueError):
+            messages.error(request, 'El usuario seleccionado no existe.')
+            return None
+
+    def _modificar(self, request):
+        cliente = self._cliente_seleccionado(request)
+        if cliente is None:
+            return
+
+        datos = _leer_datos_cliente(request.POST)
+        errores = _validar_cliente(datos, cliente)
+        if errores:
+            for e in errores:
+                messages.error(request, e)
+            return
+
+        with transaction.atomic():
+            usuario = cliente.usuario
+            if usuario.username.lower() == usuario.email.lower():
+                usuario.username = datos['email']
+            usuario.email = datos['email']
+            usuario.first_name = datos['nombre']
+            usuario.last_name = datos['apellidos']
+            usuario.save()
+
+            cliente.documento = datos['dni']
+            cliente.telefono = datos['telefono']
+            cliente.save()
+
+        messages.success(request, 'Usuario modificado correctamente.')
+
+    def _eliminar(self, request):
+        cliente = self._cliente_seleccionado(request)
+        if cliente is None:
+            return
+
+        # Eliminación lógica: conserva el historial de pagos, membresías y progreso
+        with transaction.atomic():
+            cliente.membresias.filter(estado=Membresia.Estado.ACTIVA).update(
+                estado=Membresia.Estado.CANCELADA
+            )
+            cliente.activo = False
+            cliente.save(update_fields=['activo'])
+            cliente.usuario.is_active = False
+            cliente.usuario.save(update_fields=['is_active'])
+
+        messages.success(request, 'Usuario eliminado correctamente.')
 
 
 class MembresiasVista(VistaPanel):
