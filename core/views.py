@@ -28,6 +28,14 @@ from django.utils import timezone
 from facturacion.models import Factura
 from facturacion.servicios import anular_factura, registrar_pago
 
+from django.db.models import Max
+
+from entrenamiento.models import ProgramaEntrenamiento, ProgresoCliente
+from entrenamiento.servicios import (
+    PROGRAMAS, asignar_programa, editar_progreso,
+    modificar_programa, registrar_progreso,
+)
+
 from cuentas.models import Cliente, Perfil
 
 from . import datos_demo as demo
@@ -724,60 +732,228 @@ class HorariosEntrenadoresVista(VistaPanel):
 
 # ---------- Administrador / Entrenador ----------
 
+def _nombre_de_usuario(usuario):
+    return usuario.get_full_name() or usuario.username
+
+
+def _obtener_entero(texto, mensaje, maximo=9999):
+    try:
+        valor = int(texto)
+    except (TypeError, ValueError):
+        raise ReglaDeNegocio(mensaje)
+    if not 0 <= valor <= maximo:
+        raise ReglaDeNegocio(mensaje)
+    return valor
+
+
+def _obtener_peso(texto):
+    try:
+        peso = Decimal(texto)
+    except (InvalidOperation, TypeError):
+        raise ReglaDeNegocio('El peso levantado no es válido.')
+    if not peso.is_finite() or peso < 0 or peso > Decimal('99999.9'):
+        raise ReglaDeNegocio('El peso levantado no es válido.')
+    return peso.quantize(Decimal('0.1'))
+
+
+def _obtener_programa(pk):
+    try:
+        return (ProgramaEntrenamiento.objects
+                .select_related('cliente__usuario', 'entrenador')
+                .get(pk=pk))
+    except (ProgramaEntrenamiento.DoesNotExist, ValueError):
+        raise ReglaDeNegocio('El plan seleccionado no existe.')
+
+
+def _obtener_progreso(pk, entrenador):
+    try:
+        return (ProgresoCliente.objects
+                .select_related('cliente__usuario')
+                .get(pk=pk, entrenador=entrenador))
+    except (ProgresoCliente.DoesNotExist, ValueError):
+        raise ReglaDeNegocio('El registro seleccionado no existe.')
+
+
+def _progreso_a_dict(r):
+    return {
+        'id': r.pk,
+        'cliente': _nombre_completo(r.cliente),
+        'fecha': r.fecha.isoformat(),
+        'peso': f'{r.peso_levantado:.1f}' if r.peso_levantado is not None else '',
+        'repeticiones': r.repeticiones if r.repeticiones is not None else '',
+        'comentario': r.observaciones,
+    }
+
+
+def _clientes_del_entrenador(entrenador):
+    """Clientes con un programa en curso a cargo del entrenador."""
+    programas = (ProgramaEntrenamiento.objects
+                .filter(entrenador=entrenador, estado=ProgramaEntrenamiento.Estado.ACTIVO)
+                .select_related('cliente__usuario')
+                .order_by('cliente__usuario__last_name', 'cliente__usuario__first_name'))
+    programas = list(programas)
+    ultimos = dict(
+        ProgresoCliente.objects
+        .filter(cliente_id__in=[p.cliente_id for p in programas])
+        .values('cliente_id')
+        .annotate(ultimo=Max('fecha'))
+        .values_list('cliente_id', 'ultimo')
+    )
+    return [
+        {
+            'cliente': _nombre_completo(p.cliente),
+            'objetivo': p.objetivo,
+            'programa': p.nombre,
+            'frecuencia': p.frecuencia,
+            'ultimo': ultimos[p.cliente_id].isoformat() if p.cliente_id in ultimos else 'Sin registros',
+        }
+        for p in programas
+    ]
+
+
+def _clientes_para_select():
+    clientes = (Cliente.objects
+                .filter(activo=True)
+                .select_related('usuario')
+                .order_by('usuario__last_name', 'usuario__first_name'))
+    return [{'id': c.pk, 'nombre': _nombre_completo(c)} for c in clientes]
+
+
 class PlanEntrenamientoVista(VistaPanel):
     roles_permitidos = (ADMIN, ENTRENADOR)
     template_name = 'core/plan_entrenamiento.html'
-    mensajes_accion = {
-        'asignar': 'Plan asignado correctamente.',
-        'modificar': 'Plan modificado correctamente.',
-    }
 
     def contexto(self, request):
+        programas = (ProgramaEntrenamiento.objects
+                    .filter(estado=ProgramaEntrenamiento.Estado.ACTIVO)
+                    .select_related('cliente__usuario', 'entrenador')
+                    .order_by('-fecha_inicio', '-id'))
+        if rol_de(request.user) == ENTRENADOR:
+            programas = programas.filter(entrenador=request.user)
         return {
-            'clientes': demo.NOMBRES_CLIENTES,
-            'programas': demo.PROGRAMAS,
-            'planes': demo.PLANES_ASIGNADOS,
+            'clientes': _clientes_para_select(),
+            'programas': PROGRAMAS,
+            'planes': [
+                {
+                    'id': p.pk,
+                    'cliente': _nombre_completo(p.cliente),
+                    'programa': p.nombre,
+                    'objetivos': p.objetivo,
+                    'capacidades': p.capacidades,
+                    'frecuencia': p.frecuencia,
+                    'entrenador': _nombre_de_usuario(p.entrenador),
+                    'fecha': p.fecha_inicio.isoformat(),
+                }
+                for p in programas
+            ],
         }
 
+    def post(self, request):
+        accion = request.POST.get('accion')
+        es_entrenador = rol_de(request.user) == ENTRENADOR
+        try:
+            frecuencia = _obtener_entero(
+                request.POST.get('frecuencia'),
+                'La frecuencia debe estar entre 1 y 7 días por semana.',
+            )
+            nombre = request.POST.get('programa', '')
+            objetivos = request.POST.get('objetivos', '').strip()
+            capacidades = request.POST.get('capacidades', '').strip()
 
-# ---------- Entrenador ----------
+            if accion == 'asignar':
+                cliente = _obtener_cliente(request.POST.get('cliente'))
+                programa = asignar_programa(
+                    cliente,
+                    request.user if es_entrenador else None,
+                    nombre, objetivos, capacidades, frecuencia,
+                )
+                messages.success(
+                    request,
+                    f'Plan «{programa.nombre}» asignado a {_nombre_completo(cliente)}. '
+                    f'Entrenador: {_nombre_de_usuario(programa.entrenador)}.',
+                )
+            elif accion == 'modificar':
+                programa = _obtener_programa(request.POST.get('id'))
+                if es_entrenador and programa.entrenador_id != request.user.pk:
+                    raise ReglaDeNegocio('Ese plan pertenece a otro entrenador.')
+                modificar_programa(programa, nombre, objetivos, capacidades, frecuencia)
+                messages.success(request, 'Plan modificado correctamente.')
+        except ReglaDeNegocio as error:
+            messages.error(request, str(error))
+        return redirect('plan_entrenamiento')
+
 
 class DashboardEntrenadorVista(VistaPanel):
     roles_permitidos = (ENTRENADOR,)
     template_name = 'core/dashboard_entrenador.html'
 
     def contexto(self, request):
+        clientes = _clientes_del_entrenador(request.user)
+        registros = (ProgresoCliente.objects
+                    .filter(entrenador=request.user)
+                    .select_related('cliente__usuario'))
         return {
             'kpis': [
-                {'valor': len(demo.CLIENTES_DEL_ENTRENADOR), 'titulo': 'Clientes asignados'},
-                {'valor': len(demo.PLANES_ASIGNADOS), 'titulo': 'Planes activos'},
-                {'valor': len(demo.PROGRESO), 'titulo': 'Progresos registrados'},
-                {'valor': 1, 'titulo': 'Clientes sin registros'},
+                {'valor': len(clientes), 'titulo': 'Clientes asignados'},
+                {'valor': len(clientes), 'titulo': 'Planes activos'},
+                {'valor': registros.count(), 'titulo': 'Progresos registrados'},
+                {'valor': sum(1 for c in clientes if c['ultimo'] == 'Sin registros'),
+                'titulo': 'Clientes sin registros'},
             ],
-            'clientes': demo.CLIENTES_DEL_ENTRENADOR,
-            'progresos': demo.PROGRESO,
+            'clientes': clientes,
+            'progresos': [_progreso_a_dict(r) for r in registros.order_by('-fecha', '-id')[:5]],
         }
 
+# ---------- Entrenador ----------
 
 class EntrenadorClientesVista(VistaPanel):
     roles_permitidos = (ENTRENADOR,)
     template_name = 'core/entrenador_clientes.html'
 
     def contexto(self, request):
-        return {'clientes': demo.CLIENTES_DEL_ENTRENADOR}
+        return {'clientes': _clientes_del_entrenador(request.user)}
 
 
 class ProgresoVista(VistaPanel):
     roles_permitidos = (ENTRENADOR,)
     template_name = 'core/progreso.html'
-    mensajes_accion = {
-        'registrar': 'Progreso registrado correctamente.',
-        'editar': 'Progreso actualizado correctamente.',
-        'eliminar': 'Registro de progreso eliminado correctamente.',
-    }
 
     def contexto(self, request):
-        return {'registros': demo.PROGRESO, 'clientes': demo.NOMBRES_CLIENTES}
+        registros = (ProgresoCliente.objects
+                    .filter(entrenador=request.user)
+                    .select_related('cliente__usuario')
+                    .order_by('-fecha', '-id'))
+        return {
+            'registros': [_progreso_a_dict(r) for r in registros],
+            'clientes': _clientes_para_select(),
+        }
+
+    def post(self, request):
+        accion = request.POST.get('accion')
+        try:
+            if accion in ('registrar', 'editar'):
+                fecha = _obtener_fecha(request.POST.get('fecha', ''))
+                peso = _obtener_peso(request.POST.get('peso'))
+                repeticiones = _obtener_entero(
+                    request.POST.get('repeticiones'), 'Las repeticiones no son válidas.'
+                )
+                comentario = request.POST.get('comentario', '').strip()
+
+            if accion == 'registrar':
+                cliente = _obtener_cliente(request.POST.get('cliente'))
+                registrar_progreso(cliente, request.user, fecha, peso, repeticiones, comentario)
+                messages.success(request, 'Progreso registrado correctamente.')
+            elif accion == 'editar':
+                registro = _obtener_progreso(request.POST.get('id'), request.user)
+                editar_progreso(registro, fecha, peso, repeticiones, comentario)
+                messages.success(request, 'Progreso actualizado correctamente.')
+            elif accion == 'eliminar':
+                registro = _obtener_progreso(request.POST.get('id'), request.user)
+                registro.delete()
+                messages.success(request, 'Registro de progreso eliminado correctamente.')
+        except ReglaDeNegocio as error:
+            messages.error(request, str(error))
+        return redirect('progreso')
 
 
 class MiAgendaVista(VistaPanel):

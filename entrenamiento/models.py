@@ -23,6 +23,8 @@ class ProgramaEntrenamiento(models.Model):
     )
     nombre = models.CharField(max_length=120)
     objetivo = models.TextField()
+    capacidades = models.TextField(blank=True)
+    frecuencia = models.PositiveSmallIntegerField(default=3)
     fecha_inicio = models.DateField(default=timezone.localdate)
     fecha_fin = models.DateField(null=True, blank=True)
     estado = models.CharField(

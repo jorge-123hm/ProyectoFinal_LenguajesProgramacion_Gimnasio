@@ -17,7 +17,7 @@
         <label for="cliente">Seleccionar Cliente:</label>
         <select id="cliente" name="cliente" required>
             <option value="">-- Seleccionar --</option>
-            {% for c in clientes %}<option value="{{ c }}">{{ c }}</option>{% endfor %}
+            {% for c in clientes %}<option value="{{ c.id }}">{{ c.nombre }}</option>{% endfor %}
         </select>
 
         <label for="objetivos">Objetivos del Cliente:</label>

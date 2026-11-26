@@ -53,7 +53,7 @@
     <label for="cliente">Seleccionar Cliente:</label>
     <select id="cliente" name="cliente" required>
         <option value="">-- Seleccionar --</option>
-        {% for c in clientes %}<option value="{{ c }}">{{ c }}</option>{% endfor %}
+        {% for c in clientes %}<option value="{{ c.id }}">{{ c.nombre }}</option>{% endfor %}
     </select>
 
     <label for="fecha">Fecha:</label>
@@ -79,11 +79,7 @@
         <input type="hidden" name="id">
         <h2>Editar Progreso</h2>
         <div class="grid-form">
-            <label class="completo">Cliente
-                <select name="cliente">
-                    {% for c in clientes %}<option value="{{ c }}">{{ c }}</option>{% endfor %}
-                </select>
-            </label>
+            <label class="completo">Cliente <input type="text" name="cliente" readonly></label>
             <label>Fecha <input type="date" name="fecha" required></label>
             <label>Peso levantado (kg) <input type="number" name="peso" min="0" step="0.5" required></label>
             <label>Repeticiones <input type="number" name="repeticiones" min="0" required></label>

@@ -122,6 +122,8 @@ CREATE TABLE entrenamiento_programaentrenamiento (
     fecha_fin      DATE,
     estado         VARCHAR(12)  NOT NULL DEFAULT 'ACTIVO'
                    CHECK (estado IN ('ACTIVO', 'FINALIZADO', 'SUSPENDIDO')),
+    capacidades    TEXT         NOT NULL DEFAULT '',
+    frecuencia     SMALLINT     NOT NULL DEFAULT 3 CHECK (frecuencia BETWEEN 1 AND 7),
     observaciones  TEXT         NOT NULL DEFAULT '',
     creado_en      TIMESTAMPTZ  NOT NULL DEFAULT NOW(),
     CHECK (fecha_fin IS NULL OR fecha_fin >= fecha_inicio)
