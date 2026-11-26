@@ -5,7 +5,6 @@
 <h1>Gestión de Horarios de Entrenadores</h1>
 <p class="descripcion">
     Consulta la disponibilidad semanal de cada entrenador y agrega o modifica sus horarios.
-    Al guardar un cambio, el sistema notifica al entrenador.
 </p>
 
 <h2 class="titulo-seccion">Horario semanal</h2>
@@ -37,12 +36,12 @@
         <input type="hidden" name="accion" value="agregar">
         <label>Entrenador
             <select name="entrenador" required>
-                {% for e in entrenadores %}<option value="{{ e }}">{{ e }}</option>{% endfor %}
+                {% for e in entrenadores %}<option value="{{ e.id }}">{{ e.nombre }}</option>{% endfor %}
             </select>
         </label>
         <label>Día
             <select name="dia" required>
-                {% for d in dias %}<option value="{{ d }}">{{ d }}</option>{% endfor %}
+                {% for d in dias_opciones %}<option value="{{ d.numero }}">{{ d.nombre }}</option>{% endfor %}
             </select>
         </label>
         <label>Hora de inicio <input type="time" name="inicio" required></label>
@@ -63,7 +62,8 @@
         </thead>
         <tbody>
             {% for h in horarios %}
-            <tr data-id="{{ h.id }}" data-entrenador="{{ h.entrenador }}" data-dia="{{ h.dia }}"
+            <tr data-id="{{ h.id }}" data-entrenador="{{ h.entrenador_id }}" data-dia="{{ h.dia_numero }}"
+                data-nombre="{{ h.entrenador }}" data-dianombre="{{ h.dia }}"
                 data-inicio="{{ h.inicio }}" data-fin="{{ h.fin }}">
                 <td>{{ h.entrenador }}</td>
                 <td>{{ h.dia }}</td>
@@ -89,12 +89,12 @@
         <div class="grid-form">
             <label class="completo">Entrenador
                 <select name="entrenador">
-                    {% for e in entrenadores %}<option value="{{ e }}">{{ e }}</option>{% endfor %}
+                    {% for e in entrenadores %}<option value="{{ e.id }}">{{ e.nombre }}</option>{% endfor %}
                 </select>
             </label>
             <label class="completo">Día
                 <select name="dia">
-                    {% for d in dias %}<option value="{{ d }}">{{ d }}</option>{% endfor %}
+                    {% for d in dias_opciones %}<option value="{{ d.numero }}">{{ d.nombre }}</option>{% endfor %}
                 </select>
             </label>
             <label>Hora de inicio <input type="time" name="inicio" required></label>
@@ -115,8 +115,8 @@
         <input type="hidden" name="id">
         <h2>Eliminar Horario</h2>
         <p class="texto-modal">
-            ¿Seguro que deseas eliminar el horario de <strong data-texto="entrenador"></strong>
-            del día <strong data-texto="dia"></strong>?
+            ¿Seguro que deseas eliminar el horario de <strong data-texto="nombre"></strong>
+            del día <strong data-texto="dianombre"></strong>?
         </p>
         <div class="modal-botones">
             <button type="button" class="btn-secundario" data-cerrar>Cancelar</button>

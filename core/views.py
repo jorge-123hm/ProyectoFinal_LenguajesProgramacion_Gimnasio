@@ -12,7 +12,7 @@ from django.views import View
 from django.db.models import Prefetch
 from membresias.models import Membresia, PlanMembresia
 
-from datetime import date
+from datetime import date, datetime, time, timedelta
 
 from membresias.servicios import (
     ReglaDeNegocio, asignar_membresia, cancelar_membresia,
@@ -37,6 +37,11 @@ from entrenamiento.servicios import (
 )
 
 from cuentas.models import Cliente, Perfil
+from programacion.models import ClaseGrupal, HorarioEntrenador, ReservaClase
+from programacion.servicios import (
+    agregar_horario, cancelar_clase, cancelar_reserva, entrenadores, marcar_finalizadas,
+    modificar_clase, modificar_horario, programar_clase, reservar_clase,
+)
 
 from . import datos_demo as demo
 from .mixins import RolRequeridoMixin
@@ -688,46 +693,238 @@ class NotificacionesVista(VistaPanel):
         return {'clientes': demo.NOMBRES_CLIENTES, 'enviadas': demo.NOTIFICACIONES_ENVIADAS}
 
 
+def _obtener_hora(texto):
+    try:
+        return time.fromisoformat(texto)
+    except (TypeError, ValueError):
+        raise ReglaDeNegocio('La hora ingresada no es válida.')
+
+
+def _obtener_entrenador(pk):
+    try:
+        return User.objects.get(pk=pk, perfil__rol=Perfil.Rol.ENTRENADOR, is_active=True)
+    except (User.DoesNotExist, ValueError, TypeError):
+        raise ReglaDeNegocio('El entrenador seleccionado no existe.')
+
+
+def _obtener_clase(pk):
+    try:
+        return ClaseGrupal.objects.select_related('entrenador').get(pk=pk)
+    except (ClaseGrupal.DoesNotExist, ValueError, TypeError):
+        raise ReglaDeNegocio('La clase seleccionada no existe.')
+
+
+def _obtener_horario(pk):
+    try:
+        return HorarioEntrenador.objects.select_related('entrenador').get(pk=pk)
+    except (HorarioEntrenador.DoesNotExist, ValueError, TypeError):
+        raise ReglaDeNegocio('El horario seleccionado no existe.')
+
+
+def _clases_qs():
+    confirmadas = Prefetch(
+        'reservas',
+        queryset=(ReservaClase.objects
+                .filter(estado=ReservaClase.Estado.CONFIRMADA)
+                .select_related('cliente__usuario')),
+        to_attr='confirmadas',
+    )
+    return ClaseGrupal.objects.select_related('entrenador').prefetch_related(confirmadas)
+
+
+def _clase_a_dict(c):
+    local = timezone.localtime(c.fecha_hora)
+    nombres = [_nombre_completo(r.cliente) for r in c.confirmadas]
+    if not nombres:
+        texto = 'Sin inscritos'
+    else:
+        texto = ', '.join(nombres[:8])
+        if len(nombres) > 8:
+            texto += f' y {len(nombres) - 8} más'
+    inscritos = len(nombres)
+    return {
+        'id': c.pk,
+        'nombre': c.nombre,
+        'descripcion': c.descripcion,
+        'entrenador': _nombre_de_usuario(c.entrenador),
+        'entrenador_id': c.entrenador_id,
+        'fecha': local.date().isoformat(),
+        'hora': local.strftime('%H:%M'),
+        'duracion': c.duracion_minutos,
+        'capacidad': c.capacidad_maxima,
+        'inscritos': inscritos,
+        'cupos': max(c.capacidad_maxima - inscritos, 0),
+        'porcentaje': round(inscritos / c.capacidad_maxima * 100) if c.capacidad_maxima else 0,
+        'estado': c.get_estado_display(),
+        'inscritos_nombres': texto,
+    }
+
+
+def _calendario_semana():
+    """Las clases de la semana actual (lunes a domingo), agrupadas por día."""
+    hoy = timezone.localdate()
+    lunes = hoy - timedelta(days=hoy.weekday())
+    desde = timezone.make_aware(datetime.combine(lunes, time.min))
+    hasta = desde + timedelta(days=7)
+    clases = _clases_qs().filter(fecha_hora__gte=desde, fecha_hora__lt=hasta)
+
+    por_dia = {}
+    for c in clases:
+        por_dia.setdefault(timezone.localtime(c.fecha_hora).date(), []).append(c)
+
+    nombres_dias = [nombre for _, nombre in HorarioEntrenador.DiaSemana.choices]
+    calendario = []
+    for i in range(7):
+        dia = lunes + timedelta(days=i)
+        calendario.append({
+            'dia': f'{nombres_dias[i]} {dia:%d/%m}',
+            'clases': [
+                {
+                    'hora': timezone.localtime(c.fecha_hora).strftime('%H:%M'),
+                    'nombre': c.nombre,
+                    'entrenador': _nombre_de_usuario(c.entrenador),
+                    'estado': c.get_estado_display(),
+                }
+                for c in sorted(por_dia.get(dia, []), key=lambda x: x.fecha_hora)
+            ],
+        })
+    return calendario
+
+
+def _rangos_por_dia(horarios):
+    """Textos de horario ('06:00 - 12:00') de cada día de la semana para una lista de horarios."""
+    celdas = []
+    for dia in range(7):
+        rangos = [
+            f'{h.hora_inicio:%H:%M} - {h.hora_fin:%H:%M}'
+            for h in horarios if h.dia_semana == dia
+        ]
+        celdas.append(' / '.join(rangos))
+    return celdas
+
+
 class ClasesGrupalesVista(VistaPanel):
     roles_permitidos = (ADMIN, RECEPCION)
     template_name = 'core/clases_grupales.html'
-    mensajes_accion = {
-        'programar': 'Clase programada correctamente y agregada al calendario.',
-        'modificar': 'Clase modificada correctamente.',
-        'cancelar': 'Clase cancelada. Se notificó a los clientes inscritos.',
-    }
 
     def contexto(self, request):
-        programadas = [c for c in demo.CLASES_GRUPALES if c['estado'] == 'Programada']
+        marcar_finalizadas()
+        clases = [_clase_a_dict(c) for c in _clases_qs().order_by('-fecha_hora')[:100]]
+        programadas = [c for c in clases if c['estado'] == 'Programada']
         return {
-            'clases': demo.CLASES_GRUPALES,
-            'calendario': demo.CALENDARIO,
-            'entrenadores': demo.ENTRENADORES,
+            'clases': clases,
+            'calendario': _calendario_semana(),
+            'entrenadores': [
+                {'id': u.pk, 'nombre': _nombre_de_usuario(u)} for u in entrenadores()
+            ],
             'kpis': [
                 {'valor': len(programadas), 'titulo': 'Clases programadas'},
                 {'valor': sum(c['cupos'] for c in programadas), 'titulo': 'Cupos disponibles'},
                 {'valor': sum(1 for c in programadas if c['cupos'] == 0), 'titulo': 'Clases llenas'},
-                {'valor': sum(1 for c in demo.CLASES_GRUPALES if c['estado'] == 'Cancelada'), 'titulo': 'Clases canceladas'},
+                {'valor': sum(1 for c in clases if c['estado'] == 'Cancelada'),
+                'titulo': 'Clases canceladas'},
             ],
         }
+
+    def post(self, request):
+        accion = request.POST.get('accion')
+        try:
+            if accion in ('programar', 'modificar'):
+                entrenador = _obtener_entrenador(request.POST.get('entrenador'))
+                fecha = _obtener_fecha(request.POST.get('fecha', ''))
+                hora = _obtener_hora(request.POST.get('hora', ''))
+                inicio = timezone.make_aware(datetime.combine(fecha, hora))
+                duracion = _obtener_entero(request.POST.get('duracion'), 'La duración no es válida.')
+                capacidad = _obtener_entero(request.POST.get('capacidad'), 'La capacidad no es válida.')
+                nombre = request.POST.get('nombre', '').strip()
+                descripcion = request.POST.get('descripcion', '').strip()
+
+            if accion == 'programar':
+                clase = programar_clase(nombre, descripcion, entrenador, inicio, duracion, capacidad)
+                messages.success(
+                    request,
+                    f'Clase «{clase.nombre}» programada para el {fecha:%d/%m/%Y} '
+                    f'a las {hora:%H:%M} y agregada al calendario.',
+                )
+            elif accion == 'modificar':
+                clase = _obtener_clase(request.POST.get('id'))
+                modificar_clase(clase, nombre, descripcion, entrenador, inicio, duracion, capacidad)
+                messages.success(request, 'Clase modificada correctamente.')
+            elif accion == 'cancelar':
+                clase = _obtener_clase(request.POST.get('id'))
+                avisados = cancelar_clase(clase)
+                if avisados:
+                    messages.success(
+                        request,
+                        f'Clase cancelada. Se notificó a {avisados} cliente(s) inscrito(s).',
+                    )
+                else:
+                    messages.success(request, 'Clase cancelada correctamente.')
+        except ReglaDeNegocio as error:
+            messages.error(request, str(error))
+        return redirect('clases_grupales')
 
 
 class HorariosEntrenadoresVista(VistaPanel):
     roles_permitidos = (ADMIN,)
     template_name = 'core/horarios_entrenadores.html'
-    mensajes_accion = {
-        'agregar': 'Horario guardado. Se notificó al entrenador.',
-        'modificar': 'Horario actualizado. Se notificó al entrenador.',
-        'eliminar': 'Horario eliminado correctamente.',
-    }
 
     def contexto(self, request):
+        lista = list(entrenadores())
+        horarios = list(HorarioEntrenador.objects.select_related('entrenador'))
+        nombres_dias = [nombre for _, nombre in HorarioEntrenador.DiaSemana.choices]
         return {
-            'dias': demo.DIAS_SEMANA,
-            'entrenadores': demo.ENTRENADORES,
-            'grid': demo.HORARIO_GRID,
-            'horarios': demo.HORARIOS,
+            'dias': nombres_dias,
+            'dias_opciones': [
+                {'numero': numero, 'nombre': nombre}
+                for numero, nombre in HorarioEntrenador.DiaSemana.choices
+            ],
+            'entrenadores': [{'id': u.pk, 'nombre': _nombre_de_usuario(u)} for u in lista],
+            'grid': [
+                {
+                    'entrenador': _nombre_de_usuario(u),
+                    'celdas': _rangos_por_dia([h for h in horarios if h.entrenador_id == u.pk]),
+                }
+                for u in lista
+            ],
+            'horarios': [
+                {
+                    'id': h.pk,
+                    'entrenador': _nombre_de_usuario(h.entrenador),
+                    'entrenador_id': h.entrenador_id,
+                    'dia': nombres_dias[h.dia_semana],
+                    'dia_numero': h.dia_semana,
+                    'inicio': h.hora_inicio.strftime('%H:%M'),
+                    'fin': h.hora_fin.strftime('%H:%M'),
+                }
+                for h in horarios
+            ],
         }
+
+    def post(self, request):
+        accion = request.POST.get('accion')
+        try:
+            if accion in ('agregar', 'modificar'):
+                entrenador = _obtener_entrenador(request.POST.get('entrenador'))
+                dia = _obtener_entero(request.POST.get('dia'), 'El día seleccionado no es válido.', 6)
+                inicio = _obtener_hora(request.POST.get('inicio', ''))
+                fin = _obtener_hora(request.POST.get('fin', ''))
+
+            if accion == 'agregar':
+                agregar_horario(entrenador, dia, inicio, fin)
+                messages.success(request, 'Horario guardado correctamente.')
+            elif accion == 'modificar':
+                horario = _obtener_horario(request.POST.get('id'))
+                modificar_horario(horario, entrenador, dia, inicio, fin)
+                messages.success(request, 'Horario actualizado correctamente.')
+            elif accion == 'eliminar':
+                _obtener_horario(request.POST.get('id')).delete()
+                messages.success(request, 'Horario eliminado correctamente.')
+        except ReglaDeNegocio as error:
+            messages.error(request, str(error))
+        return redirect('horarios_entrenadores')
+
+
 
 
 # ---------- Administrador / Entrenador ----------
@@ -962,7 +1159,20 @@ class MiAgendaVista(VistaPanel):
     http_method_names = ['get', 'head', 'options']
 
     def contexto(self, request):
-        return {'horario': demo.MI_HORARIO, 'clases': demo.MIS_CLASES}
+        marcar_finalizadas()
+        nombres_dias = [nombre for _, nombre in HorarioEntrenador.DiaSemana.choices]
+        horarios = list(HorarioEntrenador.objects.filter(entrenador=request.user))
+        desde = timezone.now() - timedelta(days=7)
+        clases = (_clases_qs()
+                .filter(entrenador=request.user, fecha_hora__gte=desde)
+                .order_by('fecha_hora'))
+        return {
+            'horario': [
+                {'dia': dia, 'rango': rango}
+                for dia, rango in zip(nombres_dias, _rangos_por_dia(horarios))
+            ],
+            'clases': [_clase_a_dict(c) for c in clases],
+        }
 
 
 # ---------- Cliente ----------
@@ -1025,14 +1235,44 @@ class MisNotificacionesVista(VistaPanel):
 class ClasesClienteVista(VistaPanel):
     roles_permitidos = (CLIENTE,)
     template_name = 'core/clases_cliente.html'
-    mensajes_accion = {
-        'reservar': 'Reserva confirmada. ¡Te esperamos en la clase!',
-        'cancelar_reserva': 'Reserva cancelada correctamente.',
-    }
 
     def contexto(self, request):
-        clases = demo.CLASES_CLIENTE
+        marcar_finalizadas()
+        cliente = getattr(request.user, 'cliente', None)
+        reservadas = set()
+        if cliente is not None:
+            reservadas = set(
+                ReservaClase.objects
+                .filter(cliente=cliente, estado=ReservaClase.Estado.CONFIRMADA)
+                .values_list('clase_id', flat=True)
+            )
+        proximas = (_clases_qs()
+                    .filter(estado=ClaseGrupal.Estado.PROGRAMADA, fecha_hora__gt=timezone.now())
+                    .order_by('fecha_hora'))
+        clases = []
+        for c in proximas:
+            datos = _clase_a_dict(c)
+            datos['reservada'] = c.pk in reservadas
+            datos['llena'] = datos['cupos'] == 0
+            clases.append(datos)
         return {
             'clases': clases,
             'reservas': sum(1 for c in clases if c['reservada']),
         }
+
+    def post(self, request):
+        accion = request.POST.get('accion')
+        cliente = getattr(request.user, 'cliente', None)
+        if cliente is None:
+            messages.error(request, 'Tu cuenta no tiene un perfil de cliente.')
+            return redirect('clases_cliente')
+        try:
+            if accion == 'reservar':
+                clase = reservar_clase(cliente, request.POST.get('id'))
+                messages.success(request, f'Reserva confirmada en «{clase.nombre}». ¡Te esperamos!')
+            elif accion == 'cancelar_reserva':
+                clase = cancelar_reserva(cliente, request.POST.get('id'))
+                messages.success(request, f'Reserva cancelada en «{clase.nombre}».')
+        except ReglaDeNegocio as error:
+            messages.error(request, str(error))
+        return redirect('clases_cliente')

@@ -27,7 +27,7 @@
             </label>
             <label>Entrenador
                 <select name="entrenador" required>
-                    {% for e in entrenadores %}<option value="{{ e }}">{{ e }}</option>{% endfor %}
+                    {% for e in entrenadores %}<option value="{{ e.id }}">{{ e.nombre }}</option>{% endfor %}
                 </select>
             </label>
             <label>Fecha <input type="date" name="fecha" data-hoy required></label>
@@ -83,7 +83,7 @@
         </thead>
         <tbody>
             {% for c in clases %}
-            <tr data-id="{{ c.id }}" data-nombre="{{ c.nombre }}" data-entrenador="{{ c.entrenador }}"
+            <tr data-id="{{ c.id }}" data-nombre="{{ c.nombre }}" data-entrenador="{{ c.entrenador_id }}"
                 data-fecha="{{ c.fecha }}" data-hora="{{ c.hora }}" data-duracion="{{ c.duracion }}"
                 data-capacidad="{{ c.capacidad }}" data-descripcion="{{ c.descripcion }}">
                 <td>{{ c.nombre }}</td>
@@ -119,7 +119,7 @@
             <label>Nombre de la clase <input type="text" name="nombre" maxlength="120" required></label>
             <label>Entrenador
                 <select name="entrenador">
-                    {% for e in entrenadores %}<option value="{{ e }}">{{ e }}</option>{% endfor %}
+                    {% for e in entrenadores %}<option value="{{ e.id }}">{{ e.nombre }}</option>{% endfor %}
                 </select>
             </label>
             <label>Fecha <input type="date" name="fecha" required></label>
