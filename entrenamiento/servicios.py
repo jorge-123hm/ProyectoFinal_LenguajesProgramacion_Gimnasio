@@ -4,6 +4,7 @@ from django.db.models import Count, Q
 from django.utils import timezone
 
 from cuentas.models import Perfil
+from cuentas.notificaciones import notificar
 from membresias.models import Membresia
 from membresias.servicios import ReglaDeNegocio, marcar_vencidas
 
@@ -70,7 +71,7 @@ def asignar_programa(cliente, entrenador, nombre, objetivo, capacidades, frecuen
             estado=ProgramaEntrenamiento.Estado.FINALIZADO,
             fecha_fin=timezone.localdate(),
         )
-        return ProgramaEntrenamiento.objects.create(
+        programa = ProgramaEntrenamiento.objects.create(
             cliente=cliente,
             entrenador=entrenador,
             nombre=nombre,
@@ -78,6 +79,8 @@ def asignar_programa(cliente, entrenador, nombre, objetivo, capacidades, frecuen
             capacidades=capacidades,
             frecuencia=frecuencia,
         )
+        notificar(cliente, f'Tu entrenador te asignó el plan «{nombre}», {frecuencia} días por semana.')
+        return programa
 
 
 def modificar_programa(programa, nombre, objetivo, capacidades, frecuencia):
@@ -90,6 +93,7 @@ def modificar_programa(programa, nombre, objetivo, capacidades, frecuencia):
     programa.capacidades = capacidades
     programa.frecuencia = frecuencia
     programa.save()
+    notificar(programa.cliente, 'Tu entrenador actualizó tu plan de entrenamiento.')
     return programa
 
 
@@ -104,7 +108,7 @@ def registrar_progreso(cliente, entrenador, fecha, peso, repeticiones, comentari
         )
     if fecha > timezone.localdate():
         raise ReglaDeNegocio('La fecha del registro no puede ser futura.')
-    return ProgresoCliente.objects.create(
+    registro = ProgresoCliente.objects.create(
         cliente=cliente,
         entrenador=entrenador,
         fecha=fecha,
@@ -112,6 +116,12 @@ def registrar_progreso(cliente, entrenador, fecha, peso, repeticiones, comentari
         repeticiones=repeticiones,
         observaciones=comentario,
     )
+    notificar(
+        cliente,
+        f'Tu entrenador registró tu progreso del {fecha:%d/%m/%Y}: '
+        f'{peso:.1f} kg x {repeticiones} repeticiones.',
+    )
+    return registro
 
 
 def editar_progreso(registro, fecha, peso, repeticiones, comentario):

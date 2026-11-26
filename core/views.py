@@ -36,7 +36,8 @@ from entrenamiento.servicios import (
     modificar_programa, registrar_progreso,
 )
 
-from cuentas.models import Cliente, Perfil
+from cuentas.models import Cliente, Notificacion, Perfil
+from cuentas.servicios import GRUPOS, clientes_del_grupo, enviar_notificacion
 from programacion.models import ClaseGrupal, HorarioEntrenador, ReservaClase
 from programacion.servicios import (
     agregar_horario, cancelar_clase, cancelar_reserva, entrenadores, marcar_finalizadas,
@@ -684,13 +685,64 @@ class ReporteFacturacionVista(VistaPanel):
         }
 
 
+def _fecha_local(momento):
+    return timezone.localtime(momento).strftime('%Y-%m-%d')
+
+
+def _notificaciones_nuevas(usuario, maximo=5):
+    cliente = getattr(usuario, 'cliente', None)
+    if cliente is None:
+        return []
+    nuevas = cliente.notificaciones.filter(leida=False).order_by('-fecha_envio', '-id')[:maximo]
+    return [{'mensaje': n.mensaje, 'fecha': _fecha_local(n.fecha_envio)} for n in nuevas]
+
+
+def _historial_envios(limite=200, maximo=30):
+    """Últimos envíos. Las notificaciones iguales enviadas en el mismo minuto se agrupan."""
+    registros = (Notificacion.objects
+                .select_related('cliente__usuario')
+                .order_by('-fecha_envio', '-id')[:limite])
+    grupos = {}
+    for n in registros:
+        momento = timezone.localtime(n.fecha_envio).replace(second=0, microsecond=0)
+        grupos.setdefault((n.mensaje, momento), []).append(n)
+
+    historial = []
+    for (mensaje, momento), lista in list(grupos.items())[:maximo]:
+        if len(lista) == 1:
+            destinatario = _nombre_completo(lista[0].cliente)
+        else:
+            destinatario = f'{len(lista)} clientes'
+        historial.append({
+            'destinatario': destinatario,
+            'mensaje': mensaje,
+            'fecha': momento.strftime('%Y-%m-%d %H:%M'),
+        })
+    return historial
+
+
 class NotificacionesVista(VistaPanel):
     roles_permitidos = (ADMIN, RECEPCION)
     template_name = 'core/notificaciones.html'
-    mensaje_post = 'Notificación enviada correctamente.'
 
     def contexto(self, request):
-        return {'clientes': demo.NOMBRES_CLIENTES, 'enviadas': demo.NOTIFICACIONES_ENVIADAS}
+        return {
+            'clientes': _clientes_para_select(),
+            'enviadas': _historial_envios(),
+        }
+
+    def post(self, request):
+        destino = request.POST.get('destinatario', '')
+        try:
+            if destino in GRUPOS:
+                clientes = clientes_del_grupo(destino)
+            else:
+                clientes = [_obtener_cliente(destino)]
+            enviados = enviar_notificacion(clientes, request.POST.get('mensaje', ''))
+            messages.success(request, f'Notificación enviada a {enviados} cliente(s).')
+        except ReglaDeNegocio as error:
+            messages.error(request, str(error))
+        return redirect('notificaciones')
 
 
 def _obtener_hora(texto):
@@ -1187,7 +1239,7 @@ class InicioClienteVista(VistaPanel):
             'plan': demo.MI_PLAN,
             'ultimo_progreso': demo.MI_PROGRESO[-1],
             'ultimo_pago': demo.MIS_PAGOS[0],
-            'nuevas': [n for n in demo.MIS_NOTIFICACIONES if n['nueva']],
+            'nuevas': _notificaciones_nuevas(request.user),
         }
 
 
@@ -1229,7 +1281,18 @@ class MisNotificacionesVista(VistaPanel):
     template_name = 'core/mis_notificaciones.html'
 
     def contexto(self, request):
-        return {'notificaciones': demo.MIS_NOTIFICACIONES}
+        cliente = getattr(request.user, 'cliente', None)
+        if cliente is None:
+            return {'notificaciones': []}
+
+        recientes = cliente.notificaciones.order_by('-fecha_envio', '-id')[:50]
+        lista = [
+            {'mensaje': n.mensaje, 'fecha': _fecha_local(n.fecha_envio), 'nueva': not n.leida}
+            for n in recientes
+        ]
+        # Al abrir la bandeja, las notificaciones pasan a leídas
+        cliente.notificaciones.filter(leida=False).update(leida=True)
+        return {'notificaciones': lista}
 
 
 class ClasesClienteVista(VistaPanel):

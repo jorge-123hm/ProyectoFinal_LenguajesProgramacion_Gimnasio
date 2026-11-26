@@ -4,6 +4,7 @@ from decimal import Decimal
 from django.db import transaction
 from django.utils import timezone
 
+from cuentas.notificaciones import notificar
 from membresias.models import Membresia
 from membresias.servicios import ReglaDeNegocio
 
@@ -55,8 +56,8 @@ def registrar_pago(cliente, monto, fecha, metodo, concepto):
     )
     momento = timezone.make_aware(datetime.combine(fecha, timezone.localtime().time()))
     Pago.objects.create(factura=factura, fecha_pago=momento, monto=monto, metodo=metodo)
+    notificar(cliente, f'Registramos tu pago de S/. {monto:.2f}. Factura {factura.numero}.')
     return factura
-
 
 def anular_factura(numero):
     """Anula una factura. El historial de pagos se conserva."""

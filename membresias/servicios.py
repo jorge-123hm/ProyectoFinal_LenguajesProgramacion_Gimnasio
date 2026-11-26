@@ -2,6 +2,8 @@ from datetime import timedelta
 
 from django.utils import timezone
 
+from cuentas.notificaciones import notificar
+
 from .models import Membresia
 
 # Una membresía vigente solo puede renovarse en sus últimos días
@@ -28,7 +30,12 @@ def asignar_membresia(cliente, plan, fecha_inicio):
             'El cliente ya tiene una membresía activa. '
             'Renuévala o cancélala antes de asignar una nueva.'
         )
-    return Membresia.objects.create(cliente=cliente, plan=plan, fecha_inicio=fecha_inicio)
+    membresia = Membresia.objects.create(cliente=cliente, plan=plan, fecha_inicio=fecha_inicio)
+    notificar(
+        cliente,
+        f'Tu membresía {plan.nombre} está activa hasta el {membresia.fecha_vencimiento:%d/%m/%Y}.',
+    )
+    return membresia
 
 
 def renovar_membresia(membresia, plan, fecha_inicio):
@@ -61,6 +68,10 @@ def renovar_membresia(membresia, plan, fecha_inicio):
     membresia.estado = Membresia.Estado.ACTIVA
     membresia.motivo_cancelacion = ''
     membresia.save()
+    notificar(
+        membresia.cliente,
+        f'Tu membresía {plan.nombre} fue renovada hasta el {membresia.fecha_vencimiento:%d/%m/%Y}.',
+    )
     return membresia
 
 
@@ -77,4 +88,5 @@ def cancelar_membresia(membresia, motivo=''):
     membresia.estado = Membresia.Estado.CANCELADA
     membresia.motivo_cancelacion = motivo
     membresia.save(update_fields=['estado', 'motivo_cancelacion'])
+    notificar(membresia.cliente, 'Tu membresía fue cancelada. Si fue un error, comunícate con recepción.')
     return membresia

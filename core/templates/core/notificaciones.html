@@ -13,10 +13,10 @@
         {% csrf_token %}
         <label>Destinatario
             <select name="destinatario" required>
-                <option>Todos los clientes</option>
-                <option>Clientes con membresía por vencer</option>
-                <option>Clientes con membresía vencida</option>
-                {% for c in clientes %}<option>{{ c }}</option>{% endfor %}
+                <option value="todos">Todos los clientes</option>
+                <option value="por_vencer">Clientes con membresía por vencer</option>
+                <option value="vencidas">Clientes con membresía vencida</option>
+                {% for c in clientes %}<option value="{{ c.id }}">{{ c.nombre }}</option>{% endfor %}
             </select>
         </label>
 
