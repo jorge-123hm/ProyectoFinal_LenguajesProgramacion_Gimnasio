@@ -5,17 +5,18 @@
 <h1>Mi Progreso</h1>
 <p class="descripcion">Evolución de tu peso levantado y repeticiones, registrada por tu entrenador.</p>
 
+{% if ultimo %}
 <section class="kpis">
     <article class="kpi"><span class="kpi-valor">{{ ultimo.peso }} kg</span><span class="kpi-titulo">Último peso levantado</span></article>
     <article class="kpi"><span class="kpi-valor">{{ ultimo.repeticiones }}</span><span class="kpi-titulo">Repeticiones (último registro)</span></article>
-    <article class="kpi"><span class="kpi-valor">{{ registros|length }}</span><span class="kpi-titulo">Registros totales</span></article>
+    <article class="kpi"><span class="kpi-valor">{{ total }}</span><span class="kpi-titulo">Registros totales</span></article>
 </section>
 
 <section class="dos-columnas" style="margin-top:22px">
     <div class="panel">
         <h3>Evolución del peso levantado (kg)</h3>
         <div class="barras">
-            {% for r in registros %}
+            {% for r in grafico %}
             <div class="barra-col">
                 <span class="barra-valor">{{ r.peso }}</span>
                 <div class="barra-area"><div class="barra" style="height: {{ r.altura }}%"></div></div>
@@ -46,4 +47,10 @@
         </div>
     </div>
 </section>
+{% else %}
+<section class="panel">
+    <h3>Aún no hay registros</h3>
+    <p class="texto-suave">Cuando tu entrenador registre tu progreso, lo verás aquí.</p>
+</section>
+{% endif %}
 {% endblock %}

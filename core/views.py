@@ -15,7 +15,7 @@ from membresias.models import Membresia, PlanMembresia
 from datetime import date, datetime, time, timedelta
 
 from membresias.servicios import (
-    ReglaDeNegocio, asignar_membresia, cancelar_membresia,
+    DIAS_RENOVACION_ANTICIPADA, ReglaDeNegocio, asignar_membresia, cancelar_membresia,
     marcar_vencidas, renovar_membresia,
 )
 
@@ -44,7 +44,6 @@ from programacion.servicios import (
     modificar_clase, modificar_horario, programar_clase, reservar_clase,
 )
 
-from . import datos_demo as demo
 from .mixins import RolRequeridoMixin
 from .roles import ADMIN, CLIENTE, ENTRENADOR, FINANCIERO, RECEPCION, rol_de, url_inicio
 
@@ -203,25 +202,46 @@ class VistaPanel(RolRequeridoMixin, View):
 
 # ---------- Administrador / Recepcionista / Financiero ----------
 
+def _membresias_por_vencer():
+    """Membresías activas que vencen dentro del plazo de renovación anticipada."""
+    hoy = timezone.localdate()
+    limite = hoy + timedelta(days=DIAS_RENOVACION_ANTICIPADA)
+    return (Membresia.objects
+            .filter(estado=Membresia.Estado.ACTIVA, cliente__activo=True,
+                    fecha_vencimiento__gte=hoy, fecha_vencimiento__lte=limite)
+            .select_related('cliente__usuario', 'plan')
+            .order_by('fecha_vencimiento'))
+
+
 class DashboardVista(VistaPanel):
     roles_permitidos = (ADMIN, RECEPCION, FINANCIERO)
     template_name = 'core/dashboard.html'
 
     def contexto(self, request):
+        marcar_vencidas()
         rol = rol_de(request.user)
+        hoy = timezone.localdate()
+
+        por_vencer = list(_membresias_por_vencer())
+        clientes = Cliente.objects.filter(activo=True).count()
+        activas = Membresia.objects.filter(
+            estado=Membresia.Estado.ACTIVA, cliente__activo=True
+        ).count()
         res = _resumen_facturas(Factura.objects.all())
+
         kpis = {
             ADMIN: [
-                {'valor': 9, 'titulo': 'Clientes registrados'},
-                {'valor': 7, 'titulo': 'Membresías activas'},
-                {'valor': len(demo.POR_VENCER), 'titulo': 'Por vencer (7 días)'},
+                {'valor': clientes, 'titulo': 'Clientes registrados'},
+                {'valor': activas, 'titulo': 'Membresías activas'},
+                {'valor': len(por_vencer), 'titulo': 'Por vencer (7 días)'},
                 {'valor': res['total'], 'titulo': 'Total facturado'},
             ],
             RECEPCION: [
-                {'valor': 9, 'titulo': 'Clientes registrados'},
-                {'valor': 7, 'titulo': 'Membresías activas'},
-                {'valor': len(demo.POR_VENCER), 'titulo': 'Por vencer (7 días)'},
-                {'valor': 2, 'titulo': 'Notificaciones enviadas hoy'},
+                {'valor': clientes, 'titulo': 'Clientes registrados'},
+                {'valor': activas, 'titulo': 'Membresías activas'},
+                {'valor': len(por_vencer), 'titulo': 'Por vencer (7 días)'},
+                {'valor': Notificacion.objects.filter(fecha_envio__date=hoy).count(),
+                'titulo': 'Notificaciones de hoy'},
             ],
             FINANCIERO: [
                 {'valor': res['total'], 'titulo': 'Total facturado'},
@@ -232,8 +252,19 @@ class DashboardVista(VistaPanel):
         }
         return {
             'kpis': kpis[rol],
-            'por_vencer': demo.POR_VENCER,
-            'facturas': [_factura_a_dict(f) for f in _facturas_qs().order_by('-fecha_emision', '-id')[:5]],
+            'por_vencer': [
+                {
+                    'cliente': _nombre_completo(m.cliente),
+                    'plan': m.plan.nombre,
+                    'vencimiento': m.fecha_vencimiento.isoformat(),
+                    'dias': (m.fecha_vencimiento - hoy).days,
+                }
+                for m in por_vencer
+            ],
+            'facturas': [
+                _factura_a_dict(f)
+                for f in _facturas_qs().order_by('-fecha_emision', '-id')[:5]
+            ],
             'ingresos': _ingresos_por_mes(),
         }
 
@@ -1229,16 +1260,124 @@ class MiAgendaVista(VistaPanel):
 
 # ---------- Cliente ----------
 
+def _cliente_de(usuario):
+    return getattr(usuario, 'cliente', None)
+
+
+def _membresia_del_cliente(cliente):
+    """La membresía activa del cliente o, si no tiene, la más reciente."""
+    if cliente is None:
+        return None
+    marcar_vencidas()
+    membresias = cliente.membresias.select_related('plan')
+    return (membresias.filter(estado=Membresia.Estado.ACTIVA).order_by('-fecha_vencimiento').first()
+            or membresias.order_by('-creada_en', '-id').first())
+
+
+def _membresia_a_dict(m):
+    if m is None:
+        return None
+    hoy = timezone.localdate()
+    activa = m.estado == Membresia.Estado.ACTIVA
+    total = max((m.fecha_vencimiento - m.fecha_inicio).days, 1)
+    transcurridos = (hoy - m.fecha_inicio).days
+    porcentaje = min(max(round(transcurridos / total * 100), 0), 100) if activa else 100
+    return {
+        'plan': m.plan.nombre,
+        'estado': m.get_estado_display(),
+        'precio': f'{m.plan.precio:.2f}',
+        'inicio': m.fecha_inicio.isoformat(),
+        'vencimiento': m.fecha_vencimiento.isoformat(),
+        'dias': max((m.fecha_vencimiento - hoy).days, 0) if activa else 0,
+        'porcentaje': porcentaje,
+    }
+
+
+def _planes_a_dicts():
+    planes = list(PlanMembresia.objects.filter(activo=True).order_by('precio'))
+    destacado = planes[-1].pk if len(planes) > 1 else None
+    return [
+        {
+            'nombre': p.nombre,
+            'precio': f'{p.precio:.2f}',
+            'duracion': p.duracion_dias,
+            'destacado': p.pk == destacado,
+            'beneficios': [l.strip() for l in p.descripcion.splitlines() if l.strip()],
+        }
+        for p in planes
+    ]
+
+
+def _plan_del_cliente(cliente):
+    """El programa de entrenamiento en curso del cliente, con sus ejercicios."""
+    if cliente is None:
+        return None
+    programa = (cliente.programas_entrenamiento
+                .filter(estado=ProgramaEntrenamiento.Estado.ACTIVO)
+                .select_related('entrenador')
+                .prefetch_related('ejercicios')
+                .order_by('-fecha_inicio', '-id')
+                .first())
+    if programa is None:
+        return None
+    return {
+        'programa': programa.nombre,
+        'objetivo': programa.objetivo,
+        'capacidades': programa.capacidades,
+        'frecuencia': programa.frecuencia,
+        'entrenador': _nombre_de_usuario(programa.entrenador),
+        'desde': programa.fecha_inicio.isoformat(),
+        'observaciones': programa.observaciones,
+        'ejercicios': [
+            {
+                'orden': e.orden,
+                'nombre': e.nombre,
+                'series': e.series,
+                'repeticiones': e.repeticiones,
+                'peso': f'{e.peso_recomendado:.1f}' if e.peso_recomendado is not None else '-',
+                'descanso': e.descanso_segundos,
+                'observaciones': e.observaciones,
+            }
+            for e in sorted(programa.ejercicios.all(), key=lambda e: (e.orden, e.pk))
+        ],
+    }
+
+
+def _progreso_del_cliente_a_dict(r, maximo=0):
+    con_peso = r.peso_levantado is not None
+    return {
+        'fecha': r.fecha.isoformat(),
+        'peso': f'{r.peso_levantado:.1f}' if con_peso else '-',
+        'repeticiones': r.repeticiones if r.repeticiones is not None else '-',
+        'comentario': r.observaciones,
+        'altura': round(r.peso_levantado / maximo * 100) if con_peso and maximo else 0,
+    }
+
+
+def _ultima_factura_del_cliente(cliente):
+    if cliente is None:
+        return None
+    factura = (_facturas_qs()
+            .filter(cliente=cliente)
+            .exclude(estado=Factura.Estado.ANULADA)
+            .order_by('-fecha_emision', '-id')
+            .first())
+    return _factura_a_dict(factura) if factura else None
+
+
 class InicioClienteVista(VistaPanel):
     roles_permitidos = (CLIENTE,)
     template_name = 'core/inicio_cliente.html'
+    http_method_names = ['get', 'head', 'options']
 
     def contexto(self, request):
+        cliente = _cliente_de(request.user)
+        ultimos = list(cliente.progresos.order_by('-fecha', '-id')[:1]) if cliente else []
         return {
-            'membresia': demo.MI_MEMBRESIA,
-            'plan': demo.MI_PLAN,
-            'ultimo_progreso': demo.MI_PROGRESO[-1],
-            'ultimo_pago': demo.MIS_PAGOS[0],
+            'membresia': _membresia_a_dict(_membresia_del_cliente(cliente)),
+            'plan': _plan_del_cliente(cliente),
+            'ultimo_progreso': _progreso_del_cliente_a_dict(ultimos[0]) if ultimos else None,
+            'ultimo_pago': _ultima_factura_del_cliente(cliente),
             'nuevas': _notificaciones_nuevas(request.user),
         }
 
@@ -1246,34 +1385,58 @@ class InicioClienteVista(VistaPanel):
 class MiMembresiaVista(VistaPanel):
     roles_permitidos = (CLIENTE,)
     template_name = 'core/mi_membresia.html'
-    mensaje_post = 'Tu solicitud fue enviada a recepción. Te avisaremos cuando esté lista.'
+    http_method_names = ['get', 'head', 'options']
 
     def contexto(self, request):
-        return {'membresia': demo.MI_MEMBRESIA, 'planes': demo.PLANES_MEMBRESIA}
+        cliente = _cliente_de(request.user)
+        return {
+            'membresia': _membresia_a_dict(_membresia_del_cliente(cliente)),
+            'planes': _planes_a_dicts(),
+        }
 
 
 class MiPlanVista(VistaPanel):
     roles_permitidos = (CLIENTE,)
     template_name = 'core/mi_plan.html'
+    http_method_names = ['get', 'head', 'options']
 
     def contexto(self, request):
-        return {'plan': demo.MI_PLAN}
+        return {'plan': _plan_del_cliente(_cliente_de(request.user))}
 
 
 class MiProgresoVista(VistaPanel):
     roles_permitidos = (CLIENTE,)
     template_name = 'core/mi_progreso.html'
+    http_method_names = ['get', 'head', 'options']
 
     def contexto(self, request):
-        return {'registros': demo.MI_PROGRESO, 'ultimo': demo.MI_PROGRESO[-1]}
+        cliente = _cliente_de(request.user)
+        if cliente is None:
+            return {'registros': [], 'grafico': [], 'ultimo': None, 'total': 0}
+
+        recientes = list(cliente.progresos.order_by('-fecha', '-id')[:30])
+        # El gráfico muestra los últimos 8 registros, del más antiguo al más reciente
+        ultimos = list(reversed(recientes[:8]))
+        maximo = max((r.peso_levantado for r in ultimos if r.peso_levantado is not None), default=0)
+        return {
+            'registros': [_progreso_del_cliente_a_dict(r) for r in recientes],
+            'grafico': [_progreso_del_cliente_a_dict(r, maximo) for r in ultimos],
+            'ultimo': _progreso_del_cliente_a_dict(recientes[0]) if recientes else None,
+            'total': cliente.progresos.count(),
+        }
 
 
 class MisPagosVista(VistaPanel):
     roles_permitidos = (CLIENTE,)
     template_name = 'core/mis_pagos.html'
+    http_method_names = ['get', 'head', 'options']
 
     def contexto(self, request):
-        return {'pagos': demo.MIS_PAGOS}
+        cliente = _cliente_de(request.user)
+        if cliente is None:
+            return {'pagos': []}
+        facturas = _facturas_qs().filter(cliente=cliente).order_by('-fecha_emision', '-id')
+        return {'pagos': [_factura_a_dict(f) for f in facturas]}
 
 
 class MisNotificacionesVista(VistaPanel):

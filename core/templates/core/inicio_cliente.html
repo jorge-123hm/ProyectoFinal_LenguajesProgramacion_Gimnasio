@@ -7,19 +7,19 @@
 
 <section class="kpis">
     <article class="kpi">
-        <span class="kpi-valor">{{ membresia.plan }}</span>
-        <span class="kpi-titulo">Mi membresía ({{ membresia.estado }})</span>
+        <span class="kpi-valor">{% if membresia %}{{ membresia.plan }}{% else %}Sin membresía{% endif %}</span>
+        <span class="kpi-titulo">Mi membresía{% if membresia %} ({{ membresia.estado }}){% endif %}</span>
     </article>
     <article class="kpi">
-        <span class="kpi-valor">{{ membresia.dias }} días</span>
+        <span class="kpi-valor">{% if membresia %}{{ membresia.dias }} días{% else %}-{% endif %}</span>
         <span class="kpi-titulo">Para el vencimiento</span>
     </article>
     <article class="kpi">
-        <span class="kpi-valor">{{ plan.frecuencia }} / sem.</span>
+        <span class="kpi-valor">{% if plan %}{{ plan.frecuencia }} / sem.{% else %}-{% endif %}</span>
         <span class="kpi-titulo">Entrenamientos programados</span>
     </article>
     <article class="kpi">
-        <span class="kpi-valor">{{ ultimo_progreso.peso }} kg</span>
+        <span class="kpi-valor">{% if ultimo_progreso %}{{ ultimo_progreso.peso }} kg{% else %}-{% endif %}</span>
         <span class="kpi-titulo">Último peso levantado</span>
     </article>
 </section>
@@ -28,22 +28,38 @@
 <section class="tarjetas">
     <article class="tarjeta">
         <h3>Mi Membresía</h3>
-        <p>Plan {{ membresia.plan }}, vigente hasta el {{ membresia.vencimiento }}.</p>
+        {% if membresia %}
+        <p>Plan {{ membresia.plan }}, {% if membresia.estado == 'Activa' %}vigente hasta el {{ membresia.vencimiento }}{% else %}{{ membresia.estado|lower }} desde el {{ membresia.vencimiento }}{% endif %}.</p>
+        {% else %}
+        <p>Aún no tienes una membresía. Acércate a recepción para activarla.</p>
+        {% endif %}
         <a href="{% url 'mi_membresia' %}">Ver más</a>
     </article>
     <article class="tarjeta">
         <h3>Mi Plan</h3>
+        {% if plan %}
         <p>{{ plan.programa }}. Objetivo: {{ plan.objetivo }}.</p>
+        {% else %}
+        <p>Tu entrenador aún no te asignó un plan de entrenamiento.</p>
+        {% endif %}
         <a href="{% url 'mi_plan' %}">Ver más</a>
     </article>
     <article class="tarjeta">
         <h3>Mi Progreso</h3>
+        {% if ultimo_progreso %}
         <p>Último registro el {{ ultimo_progreso.fecha }}: {{ ultimo_progreso.peso }} kg x {{ ultimo_progreso.repeticiones }} repeticiones.</p>
+        {% else %}
+        <p>Todavía no tienes registros de progreso.</p>
+        {% endif %}
         <a href="{% url 'mi_progreso' %}">Ver más</a>
     </article>
     <article class="tarjeta">
         <h3>Mis Pagos</h3>
+        {% if ultimo_pago %}
         <p>Último pago: S/. {{ ultimo_pago.monto }} el {{ ultimo_pago.fecha }}.</p>
+        {% else %}
+        <p>Aún no tienes pagos registrados.</p>
+        {% endif %}
         <a href="{% url 'mis_pagos' %}">Ver más</a>
     </article>
 </section>

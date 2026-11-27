@@ -5,32 +5,47 @@
 <h1>Mi Plan de Entrenamiento</h1>
 <p class="descripcion">Programa personalizado asignado por tu entrenador.</p>
 
+{% if plan %}
 <section class="panel">
     <h3>{{ plan.programa }}</h3>
     <dl class="detalle">
         <dt>Objetivo</dt><dd>{{ plan.objetivo }}</dd>
+        {% if plan.capacidades %}<dt>Capacidades físicas</dt><dd>{{ plan.capacidades }}</dd>{% endif %}
         <dt>Frecuencia</dt><dd>{{ plan.frecuencia }} días por semana</dd>
         <dt>Entrenador</dt><dd>{{ plan.entrenador }}</dd>
         <dt>Asignado el</dt><dd>{{ plan.desde }}</dd>
+        {% if plan.observaciones %}<dt>Observaciones</dt><dd>{{ plan.observaciones }}</dd>{% endif %}
     </dl>
 </section>
 
-<h2 class="titulo-seccion">Rutina semanal</h2>
+<h2 class="titulo-seccion">Mi rutina</h2>
+{% if plan.ejercicios %}
 <div class="tabla-contenedor">
     <table class="tabla">
         <thead>
-            <tr><th>Día</th><th>Enfoque</th><th>Ejercicios</th><th>Series x Rep.</th></tr>
+            <tr><th>N°</th><th>Ejercicio</th><th>Series x Rep.</th><th>Peso sugerido (kg)</th><th>Descanso</th><th>Indicaciones</th></tr>
         </thead>
         <tbody>
-            {% for d in plan.rutina %}
+            {% for e in plan.ejercicios %}
             <tr>
-                <td><strong>{{ d.dia }}</strong></td>
-                <td>{{ d.enfoque }}</td>
-                <td>{{ d.ejercicios }}</td>
-                <td>{{ d.series }}</td>
+                <td>{{ e.orden }}</td>
+                <td><strong>{{ e.nombre }}</strong></td>
+                <td>{{ e.series }} x {{ e.repeticiones }}</td>
+                <td>{{ e.peso }}</td>
+                <td>{{ e.descanso }} s</td>
+                <td>{{ e.observaciones }}</td>
             </tr>
             {% endfor %}
         </tbody>
     </table>
 </div>
+{% else %}
+<p class="texto-suave">Tu entrenador aún no cargó los ejercicios de tu rutina. Consúltale en tu próxima visita.</p>
+{% endif %}
+{% else %}
+<section class="panel">
+    <h3>Aún no tienes un plan asignado</h3>
+    <p class="texto-suave">Cuando tu entrenador te asigne un programa, lo verás aquí.</p>
+</section>
+{% endif %}
 {% endblock %}

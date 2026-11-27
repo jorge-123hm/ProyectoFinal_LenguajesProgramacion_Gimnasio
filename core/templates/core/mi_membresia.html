@@ -3,8 +3,9 @@
 
 {% block contenido %}
 <h1>Mi Membresía</h1>
-<p class="descripcion">Consulta el estado de tu membresía y solicita renovarla o cambiar de plan.</p>
+<p class="descripcion">Consulta el estado de tu membresía. Para renovarla o cambiar de plan, acércate a recepción.</p>
 
+{% if membresia %}
 <section class="panel">
     <h3>Estado actual</h3>
     <dl class="detalle">
@@ -15,13 +16,23 @@
         <dt>Precio</dt><dd>S/. {{ membresia.precio }}</dd>
         <dt>Tiempo restante</dt>
         <dd>
+            {% if membresia.estado == 'Activa' %}
             Te quedan <strong>{{ membresia.dias }} días</strong>
-            <progress class="progreso-barra" value="{{ membresia.porcentaje }}" max="100" aria-label="Progreso de la membresía"></progress>
+            {% else %}
+            Tu membresía no está activa.
+            {% endif %}
+            <div class="progreso-barra"><span style="width: {{ membresia.porcentaje }}%"></span></div>
         </dd>
     </dl>
 </section>
+{% else %}
+<section class="panel">
+    <h3>Aún no tienes una membresía</h3>
+    <p class="texto-suave">Elige uno de los planes de abajo y acércate a recepción para activarlo.</p>
+</section>
+{% endif %}
 
-<h2 class="titulo-seccion">Renovar o cambiar de plan</h2>
+<h2 class="titulo-seccion">Planes disponibles</h2>
 <section class="planes">
     {% for p in planes %}
     <article class="plan{% if p.destacado %} destacado{% endif %}">
@@ -31,12 +42,9 @@
         <ul>
             {% for b in p.beneficios %}<li>{{ b }}</li>{% endfor %}
         </ul>
-        <form method="post">
-            {% csrf_token %}
-            <input type="hidden" name="plan" value="{{ p.nombre }}">
-            <button type="submit" class="btn-primario">Solicitar este plan</button>
-        </form>
     </article>
+    {% empty %}
+    <p class="texto-suave">No hay planes disponibles por ahora.</p>
     {% endfor %}
 </section>
 {% endblock %}
