@@ -62,7 +62,6 @@ Gimnasio/
 │   ├── roles.py                 # Roles y pantalla de inicio por rol
 │   ├── menus.py                 # Menú lateral según el rol
 │   ├── context_processors.py    # Datos del usuario para las plantillas
-│   ├── datos_demo.py            # Datos de ejemplo (fase de frontend)
 │   ├── templates/core/          # Plantillas HTML (vistas)
 │   │   ├── base_panel.html      # Plantilla base del panel
 │   │   ├── login.html, registro.html
@@ -150,7 +149,7 @@ si el rol no está permitido, se redirige al inicio del usuario con un mensaje.
 
 ## 7. Estado del proyecto
 
-- **Completo:** modelos y migraciones, autenticación (login, registro, cierre de
-  sesión), control de acceso por rol y todas las pantallas del frontend.
-- **En desarrollo:** conexión de las pantallas con la base de datos (las
-  pantallas usan datos de demostración definidos en `core/datos_demo.py`).
+- **Completo:** modelos y migraciones, autenticación y control de acceso por rol,
+  y todas las pantallas conectadas a la base de datos: clientes, membresías, pagos
+  y facturas, plan de entrenamiento y progreso, clases grupales, horarios,
+  notificaciones y dashboards.

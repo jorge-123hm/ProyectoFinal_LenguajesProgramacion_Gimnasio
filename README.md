@@ -6,10 +6,8 @@ grupales y horarios de entrenadores.
 
 Proyecto desarrollado con **Django (Python)** y **PostgreSQL**.
 
-> **Estado actual:** avance de frontend. Las pantallas de todos los roles están
-> terminadas y el inicio de sesión, el registro y el control de acceso por rol
-> son funcionales. Los datos que muestran las pantallas son de demostración
-> y la conexión con la base de datos se completa en la siguiente fase.
+> **Estado actual:** sistema funcional. Todos los módulos están conectados a
+> PostgreSQL y el acceso a cada pantalla se controla según el rol del usuario.
 
 ## Funcionalidades
 
@@ -140,12 +138,11 @@ se crean con `python manage.py migrate`.
 - [Arquitectura del sistema](docs/ARQUITECTURA.md)
 - [Script de la base de datos](database/script_bd.sql)
 
-## Próximos pasos
+## Lo que se podria mejorar
 
-- Conectar las pantallas con la base de datos (guardar, editar y eliminar).
-- Generar facturas y actualizar la membresía al registrar un pago.
-- Reservas de clases con control de cupos.
-- Notificaciones automáticas por vencimiento de membresía.
+- Pantalla para que el entrenador cargue los ejercicios de cada rutina.
+- Envío de notificaciones por correo electrónico.
+- Marcado de asistencia a las clases grupales.
 
 ## Equipo
 
